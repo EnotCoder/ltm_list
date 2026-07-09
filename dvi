@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+import sys
+import os
+import subprocess
+import argparse
+import re
+import requests
+
+VIDEOS_DIR = os.path.expanduser("~/Videos")
+
+
+def download_image(url):
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"Не удалось загрузить страницу: {e}", file=sys.stderr)
+        return False
+
+    html = resp.text
+    image_url = None
+
+    m = re.search(
+        r'<meta\s+property\s*=\s*["\']og:image["\']\s+content\s*=\s*["\']([^"\']+)["\']',
+        html,
+        re.IGNORECASE,
+    )
+    if m:
+        image_url = m.group(1)
+
+    if not image_url:
+        m = re.search(
+            r'<meta\s+content\s*=\s*["\']([^"\']+)["\']\s+property\s*=\s*["\']og:image["\']',
+            html,
+            re.IGNORECASE,
+        )
+        if m:
+            image_url = m.group(1)
+
+    if not image_url:
+        m = re.search(r'<img[^>]+src\s*=\s*["\']([^"\']+\.(?:jpg|jpeg|png|webp))["\']', html)
+        if m:
+            image_url = m.group(1)
+
+    if not image_url:
+        print("Не удалось найти изображение на странице", file=sys.stderr)
+        return False
+
+    if image_url.startswith("//"):
+        image_url = "https:" + image_url
+    elif image_url.startswith("/"):
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        image_url = f"{parsed.scheme}://{parsed.netloc}{image_url}"
+
+    ext = os.path.splitext(image_url.split("?")[0])[1] or ".jpg"
+    title = "image"
+
+    m_title = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
+    if m_title:
+        title = re.sub(r'[^\w\s-]', '', m_title.group(1)).strip()
+        title = re.sub(r'[-\s]+', '_', title)[:100]
+
+    dest = os.path.join(VIDEOS_DIR, f"{title}{ext}")
+    try:
+        img_resp = requests.get(image_url, headers=headers, timeout=15)
+        img_resp.raise_for_status()
+        with open(dest, "wb") as f:
+            f.write(img_resp.content)
+        print(f"Изображение сохранено: {dest}")
+        return True
+    except Exception as e:
+        print(f"Ошибка при скачивании изображения: {e}", file=sys.stderr)
+        return False
+
+
+def download(url, quality=None):
+    os.makedirs(VIDEOS_DIR, exist_ok=True)
+
+    cmd = ["yt-dlp", "-o", f"{VIDEOS_DIR}/%(title)s.%(ext)s", "--no-playlist"]
+
+    if quality == "best":
+        cmd += ["-f", "bestvideo+bestaudio/best"]
+    elif quality == "audio":
+        cmd += ["-x", "--audio-format", "mp3", "-o", f"{VIDEOS_DIR}/%(title)s.%(ext)s"]
+    elif quality == "worst":
+        cmd += ["-f", "worst"]
+
+    cmd.append(url)
+
+    print(f"Скачиваю: {url}")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode == 0:
+        print("Готово! Видео сохранено в ~/Videos")
+        return
+
+    if "No video formats found" in result.stderr or "Requested format is not available" in result.stderr:
+        print("Видео не найдено, пробую скачать как изображение...")
+        if download_image(url):
+            return
+
+    print(result.stderr, file=sys.stderr)
+    print("Ошибка при скачивании", file=sys.stderr)
+    sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Скачивание видео (или изображений) с YouTube, VK, Pinterest и др."
+    )
+    parser.add_argument("url", nargs="+", help="Ссылка")
+    parser.add_argument(
+        "-q", "--quality",
+        choices=["best", "worst", "audio"],
+        default="best",
+        help="Качество видео (по умолчанию best)",
+    )
+    args = parser.parse_args()
+
+    for url in args.url:
+        download(url, args.quality)
+
+
+if __name__ == "__main__":
+    main()

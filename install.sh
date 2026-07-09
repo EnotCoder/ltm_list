@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-SCRIPTS=("dvi" "dins")
+SCRIPTS=("dvi" "dins" "calc")
 DIR="$(dirname "$(readlink -f "$0")")"
 
 for name in "${SCRIPTS[@]}"; do
@@ -18,4 +18,4 @@ for name in "${SCRIPTS[@]}"; do
     echo "$name установлен"
 done
 
-echo "Готово! Теперь можно запускать: dvi <ссылка> или dins <ссылка>"
+echo "Готово! Установлены: dvi, dins, calc"

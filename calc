@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+import sys
+import os
+import tty
+import termios
+import operator
+
+BUTTONS = {
+     1: "1",  2: "2",  3: "3",  4: "*",
+     5: "4",  6: "5",  7: "6",  8: "/",
+     9: "7", 10: "8", 11: "9", 12: "+",
+    13: "x", 14: "0", 15: "=", 16: "-",
+}
+
+MAX_LEN = 9
+
+
+def getch():
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+        if ch == "\x1b":
+            seq = ch + sys.stdin.read(2)
+            return seq
+        return ch
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def eval_expr(expr: str) -> str:
+    ops = {
+        "+": operator.add, "-": operator.sub,
+        "*": operator.mul, "/": operator.truediv,
+    }
+    tokens = []
+    num = ""
+    for ch in expr:
+        if ch.isdigit() or ch == ".":
+            num += ch
+        else:
+            if num:
+                tokens.append(("num", float(num)))
+                num = ""
+            if ch in ops:
+                tokens.append(("op", ch))
+    if num:
+        tokens.append(("num", float(num)))
+
+    if not tokens:
+        return "0"
+
+    for op_char in ("*", "/"):
+        i = 1
+        while i < len(tokens):
+            if tokens[i] == ("op", op_char):
+                a = tokens[i - 1][1]
+                b = tokens[i + 1][1]
+                if op_char == "/" and b == 0:
+                    return "Error"
+                val = ops[op_char](a, b)
+                tokens[i - 1 : i + 2] = [("num", val)]
+            else:
+                i += 1
+
+    result = tokens[0][1]
+    for i in range(1, len(tokens), 2):
+        if tokens[i][0] == "op":
+            b = tokens[i + 1][1]
+            if tokens[i][1] == "+":
+                result += b
+            elif tokens[i][1] == "-":
+                result -= b
+
+    if result == int(result):
+        return str(int(result))
+    return str(result)
+
+
+def draw(expr: str, cursor: int, mode_idx: int):
+    os.system("clear" if os.name == "posix" else "cls")
+    print(" ================")
+    pad = MAX_LEN - len(expr)
+    print(f" |{expr}{' ' * pad}|V:02|")
+    print(" ================")
+    for row in range(4):
+        print(" | ", end="")
+        for col in range(4):
+            num = col + 1 + row * 4
+            ch = BUTTONS[num]
+            if num == cursor:
+                print(f"\033[31m{ch}\033[0m ", end="")
+            else:
+                print(f"{ch} ", end="")
+        mode_labels = {0: " def", 1: "exit"}
+        label = mode_labels.get(row, "    ")
+        if row == mode_idx:
+            print(f"|\033[31m{label}\033[0m|")
+        else:
+            print(f"|{label}|")
+    print(" ================")
+
+
+def input_calc(cursor: list, expr: list) -> bool:
+    """Returns False to quit."""
+    key = getch()
+    if key == "q":
+        return False
+    if key == "\x1b[A":  # up
+        cursor[0] = max(1, cursor[0] - 4)
+    elif key == "\x1b[B":  # down
+        cursor[0] = min(16, cursor[0] + 4)
+    elif key == "\x1b[C":  # right
+        cursor[0] = min(16, cursor[0] + 1)
+    elif key == "\x1b[D":  # left
+        cursor[0] = max(1, cursor[0] - 1)
+    elif key == "\r":
+        ch = BUTTONS[cursor[0]]
+        if ch == "x":
+            expr[0] = ""
+        elif ch in ("*", "/", "+", "-"):
+            if len(expr[0]) == 0 or len(expr[0]) >= 8:
+                pass
+            elif expr[0] and expr[0][-1] in ("*", "/", "+", "-"):
+                pass
+            else:
+                expr[0] += ch
+        elif ch == "=":
+            expr[0] = eval_expr(expr[0])
+        else:
+            if len(expr[0]) < MAX_LEN - 1:
+                expr[0] += ch
+    elif key == "\x03":  # Ctrl+C
+        return "mode"
+    return True
+
+
+def input_mode(program_state: list) -> bool:
+    key = getch()
+    if key == "q":
+        return False
+    if key == "\x1b[B":
+        program_state[0] = min(1, program_state[0] + 1)
+    elif key == "\x1b[A":
+        program_state[0] = max(0, program_state[0] - 1)
+    elif key == "\r":
+        return program_state[0]
+    return True
+
+
+def main():
+    expr = [""]
+    cursor = [1]
+    mode_idx = [0]
+
+    while True:
+        draw(expr[0], cursor[0], mode_idx[0])
+
+        if mode_idx[0] == 0:
+            result = input_calc(cursor, expr)
+        else:
+            result = input_mode(mode_idx)
+
+        if result is False:
+            break
+        if result == "mode":
+            mode_idx[0] = 1
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-SCRIPTS=("dvi" "dins")
+SCRIPTS=("dvi" "dins" "calc")
 
 for name in "${SCRIPTS[@]}"; do
     dest="/usr/local/bin/$name"

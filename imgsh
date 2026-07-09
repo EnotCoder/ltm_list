@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+import sys
+import os
+from PIL import Image
+
+FORMATS = {
+    ".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG",
+    ".webp": "WEBP", ".bmp": "BMP", ".gif": "GIF",
+    ".tiff": "TIFF", ".ico": "ICO",
+}
+
+def which_ext(path: str) -> str:
+    return os.path.splitext(path)[1].lower()
+
+
+def to_grayscale(img: Image.Image) -> Image.Image:
+    return img.convert("L")
+
+
+def resize(img: Image.Image, width: int, height: int) -> Image.Image:
+    return img.resize((width, height), Image.LANCZOS)
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Использование:")
+        print("  imgsh <входной_файл> <выходной_файл>              # конвертация формата")
+        print("  imgsh <входной_файл> <выходной_файл> --bw          # чёрно-белое")
+        print("  imgsh <входной_файл> <выходной_файл> --resize WxH  # изменение размера")
+        print("  imgsh <входной_файл> <выходной_файл> --bw --resize WxH")
+        print()
+        print("Примеры:")
+        print("  imgsh photo.png photo.jpg")
+        print("  imgsh photo.jpg photo.png --bw")
+        print("  imgsh photo.png photo.jpg --resize 512x512")
+        sys.exit(1)
+
+    src = sys.argv[1]
+    dst = sys.argv[2]
+    flags = sys.argv[3:]
+
+    if not os.path.isfile(src):
+        print(f"Файл не найден: {src}", file=sys.stderr)
+        sys.exit(1)
+
+    ext_in = which_ext(src)
+    ext_out = which_ext(dst)
+
+    if ext_out not in FORMATS:
+        print(f"Неподдерживаемый формат: {ext_out}", file=sys.stderr)
+        sys.exit(1)
+
+    img = Image.open(src)
+
+    do_bw = "--bw" in flags
+    do_resize = None
+    for f in flags:
+        if f.startswith("--resize="):
+            do_resize = f.split("=", 1)[1]
+        elif f == "--resize":
+            idx = flags.index(f)
+            if idx + 1 < len(flags):
+                do_resize = flags[idx + 1]
+
+    if do_bw:
+        img = to_grayscale(img)
+        if ext_out in (".jpg", ".jpeg") and img.mode == "L":
+            pass
+
+    if do_resize:
+        try:
+            w, h = map(int, do_resize.lower().split("x"))
+        except ValueError:
+            print("Неверный формат размера. Используй WxH, например 512x512", file=sys.stderr)
+            sys.exit(1)
+        img = resize(img, w, h)
+
+    if do_bw and img.mode == "L" and ext_out in (".jpg", ".jpeg"):
+        img = img.convert("RGB")
+    img.save(dst, format=FORMATS[ext_out])
+
+    print(f"Готово: {src} -> {dst}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+import os
+import sys
+import subprocess
+
+version = 1.1
+
+
+def print_file_found(path: str):
+    line = f"| file is - {path} |"
+    print("-" * len(line))
+    print(line)
+    print("-" * len(line))
+
+
+def print_file_not_found():
+    print("File not found")
+    print(":(")
+
+
+def search(filename: str, start_path: str = ".") -> str | None:
+    try:
+        entries = os.listdir(start_path)
+    except PermissionError:
+        return None
+    except OSError:
+        return None
+
+    for entry in entries:
+        fullpath = os.path.join(start_path, entry)
+
+        if os.path.isfile(fullpath):
+            if entry == filename:
+                return fullpath
+        elif os.path.isdir(fullpath):
+            result = search(filename, fullpath)
+            if result:
+                return result
+
+    return None
+
+
+def main():
+    if len(sys.argv) > 3:
+        print("manu argv")
+        sys.exit(1)
+    elif len(sys.argv) < 2:
+        print(version)
+        sys.exit()
+
+    filename = sys.argv[1]
+    command = sys.argv[2] if len(sys.argv) == 3 else None
+
+    found = search(filename)
+    if found is None:
+        print_file_not_found()
+        sys.exit(1)
+
+    if command:
+        subprocess.run([command, found])
+    else:
+        print_file_found(found)
+
+
+if __name__ == "__main__":
+    main()

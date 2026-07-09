@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-SRC="$(dirname "$(readlink -f "$0")")/dvi"
-DEST="/usr/local/bin/dvi"
+SCRIPTS=("dvi" "dins")
+DIR="$(dirname "$(readlink -f "$0")")"
 
-if [ ! -f "$SRC" ]; then
-    echo "Файл dvi не найден в текущей папке" >&2
-    exit 1
-fi
+for name in "${SCRIPTS[@]}"; do
+    src="$DIR/$name"
+    dest="/usr/local/bin/$name"
 
-sudo cp "$SRC" "$DEST"
-sudo chmod 755 "$DEST"
+    if [ ! -f "$src" ]; then
+        echo "Файл $name не найден в текущей папке, пропускаю" >&2
+        continue
+    fi
 
-echo "Установлено! Теперь можешь запускать: dvi <ссылка>"
+    sudo cp "$src" "$dest"
+    sudo chmod 755 "$dest"
+    echo "$name установлен"
+done
+
+echo "Готово! Теперь можно запускать: dvi <ссылка> или dins <ссылка>"

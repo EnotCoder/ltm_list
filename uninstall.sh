@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-DEST="/usr/local/bin/dvi"
+SCRIPTS=("dvi" "dins")
 
-if [ -f "$DEST" ]; then
-    sudo rm "$DEST"
-    echo "dvi удалён"
-else
-    echo "dvi не найден в /usr/local/bin" >&2
-fi
+for name in "${SCRIPTS[@]}"; do
+    dest="/usr/local/bin/$name"
+
+    if [ -f "$dest" ]; then
+        sudo rm "$dest"
+        echo "$name удалён"
+    else
+        echo "$name не найден в /usr/local/bin" >&2
+    fi
+done

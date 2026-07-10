@@ -51,8 +51,7 @@ gh EnotCoder/ltm_list   # репозиторий
 ```bash
 vfx                   # матрица (по умолчанию)
 vfx fire              # огонь
-vfx starfield         # звёздное поле
-vfx plasma            # плазма
+vfx tux               # летающая надпись LINUX
 ```
 
 Любая клавиша — выход.

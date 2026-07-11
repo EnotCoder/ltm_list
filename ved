@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+import curses
+import os
+import sys
+
+FILE = sys.argv[1] if len(sys.argv) > 1 else None
+
+
+def main(stdscr):
+    curses.use_default_colors()
+    curses.curs_set(1)
+    curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+    stdscr.keypad(True)
+    if curses.has_colors():
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(2, curses.COLOR_CYAN, -1)
+
+    lines = [""]
+    x, y = 0, 0
+    top = 0
+    modified = False
+    filename = FILE or "Untitled"
+    msg = ""
+
+    if FILE and os.path.isfile(FILE):
+        with open(FILE) as f:
+            lines = f.read().splitlines() or [""]
+
+    def cursor_right():
+        nonlocal x, y
+        if x < len(lines[y]):
+            x += 1
+
+    def cursor_left():
+        nonlocal x
+        if x > 0:
+            x -= 1
+
+    def cursor_up():
+        nonlocal y, x
+        if y > 0:
+            y -= 1
+            if x > len(lines[y]):
+                x = len(lines[y])
+
+    def cursor_down():
+        nonlocal y, x
+        if y < len(lines) - 1:
+            y += 1
+            if x > len(lines[y]):
+                x = len(lines[y])
+
+    while True:
+        h, w = stdscr.getmaxyx()
+        status = f" {filename}{' *' if modified else ''}  |  Ln {y+1}, Col {x+1}  |  Ctrl+S save  Ctrl+Q quit  Ctrl+Z undo"
+        if msg:
+            status += f"  |  {msg}"
+            msg = ""
+
+        stdscr.erase()
+        line_num_w = len(str(len(lines)))
+
+        for i, line in enumerate(lines):
+            if i < top or i >= top + h - 1:
+                continue
+            num = f"{i+1:>{line_num_w}} "
+            stdscr.addstr(i - top, 0, num, curses.color_pair(2))
+            try:
+                stdscr.addstr(i - top, line_num_w + 1, line[: w - line_num_w - 2])
+            except curses.error:
+                pass
+
+        stdscr.attron(curses.color_pair(1))
+        stdscr.addstr(h - 1, 0, status[: w - 1])
+        stdscr.attroff(curses.color_pair(1))
+
+        stdscr.move(y - top + 0 if y >= top else 0, x + line_num_w + 1 if y >= top else 0)
+
+        key = stdscr.getch()
+
+        if key == curses.KEY_MOUSE:
+            try:
+                _, mx, my, _, bstate = curses.getmouse()
+                if bstate & curses.BUTTON1_CLICKED:
+                    ly = my
+                    if ly >= len(lines):
+                        continue
+                    y = top + ly
+                    if y >= len(lines):
+                        y = len(lines) - 1
+                    lx = mx - line_num_w - 1
+                    if lx < 0:
+                        lx = 0
+                    if lx > len(lines[y]):
+                        lx = len(lines[y])
+                    x = lx
+                elif bstate & curses.BUTTON4_PRESSED:
+                    top = max(0, top - 1)
+                elif bstate & curses.BUTTON5_PRESSED:
+                    top = min(len(lines) - 1, top + 1)
+            except curses.error:
+                pass
+            continue
+
+        if key == 17:
+            break
+
+        if key == 19:
+            if not filename or filename == "Untitled":
+                stdscr.erase()
+                stdscr.addstr(0, 0, "Save as: ")
+                curses.echo()
+                fn = stdscr.getstr(0, 10, 60).decode()
+                curses.noecho()
+                if fn:
+                    filename = fn
+                else:
+                    msg = "Save cancelled"
+                    continue
+            with open(filename, "w") as f:
+                f.write("\n".join(lines))
+            modified = False
+            msg = f"Saved to {filename}"
+            continue
+
+        if key == 26:
+            msg = "Undo not implemented yet"
+            continue
+
+        if key == curses.KEY_DOWN:
+            cursor_down()
+        elif key == curses.KEY_UP:
+            cursor_up()
+        elif key == curses.KEY_LEFT:
+            cursor_left()
+        elif key == curses.KEY_RIGHT:
+            cursor_right()
+        elif key == curses.KEY_HOME:
+            x = 0
+        elif key == curses.KEY_END:
+            x = len(lines[y])
+        elif key == curses.KEY_NPAGE:
+            for _ in range(h - 2):
+                cursor_down()
+            top = min(len(lines) - 1, top + h - 2)
+        elif key == curses.KEY_PPAGE:
+            for _ in range(h - 2):
+                cursor_up()
+            top = max(0, top - h + 2)
+        elif key == curses.KEY_BACKSPACE or key == 127:
+            if x > 0:
+                lines[y] = lines[y][: x - 1] + lines[y][x:]
+                x -= 1
+                modified = True
+            elif y > 0:
+                x = len(lines[y - 1])
+                lines[y - 1] += lines[y]
+                del lines[y]
+                y -= 1
+                modified = True
+                if top > 0 and y < top:
+                    top = y
+        elif key == 10 or key == 13:
+            lines.insert(y + 1, lines[y][x:])
+            lines[y] = lines[y][:x]
+            y += 1
+            x = 0
+            modified = True
+            if y > top + h - 2:
+                top += 1
+        elif key == 9:
+            lines[y] = lines[y][:x] + "    " + lines[y][x:]
+            x += 4
+            modified = True
+        elif 32 <= key <= 126:
+            lines[y] = lines[y][:x] + chr(key) + lines[y][x:]
+            x += 1
+            modified = True
+
+        if y < top:
+            top = y
+        if y >= top + h - 1:
+            top = y - h + 3
+
+
+if __name__ == "__main__":
+    curses.wrapper(main)

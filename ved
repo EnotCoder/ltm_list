@@ -2,8 +2,167 @@
 import curses
 import os
 import sys
+import re
 
 FILE = sys.argv[1] if len(sys.argv) > 1 else None
+
+
+def get_lang(filename):
+    ext = os.path.splitext(filename)[1].lower() if filename else ""
+    return {
+        ".py": "py", ".js": "js", ".ts": "js", ".jsx": "js", ".tsx": "js",
+        ".html": "html", ".htm": "html", ".css": "css", ".json": "json",
+        ".c": "c", ".cpp": "c", ".h": "c", ".hpp": "c", ".rs": "rs",
+        ".go": "go", ".rb": "rb", ".sh": "sh", ".bash": "sh",
+        ".md": "md", ".yml": "yaml", ".yaml": "yaml", ".toml": "toml",
+        ".ini": "ini", ".cfg": "ini", ".lua": "lua",
+    }.get(ext, "")
+
+
+KEYWORDS = {
+    "py": {"def", "class", "if", "elif", "else", "for", "while", "return",
+           "import", "from", "as", "try", "except", "finally", "raise",
+           "with", "yield", "lambda", "pass", "break", "continue", "and",
+           "or", "not", "in", "is", "None", "True", "False", "del",
+           "global", "nonlocal", "assert", "async", "await", "self"},
+    "js": {"function", "var", "let", "const", "if", "else", "for", "while",
+           "return", "class", "import", "export", "from", "async", "await",
+           "try", "catch", "finally", "throw", "new", "this", "null",
+           "undefined", "true", "false", "typeof", "instanceof", "yield",
+           "switch", "case", "break", "continue", "default", "in", "of"},
+    "html": {"<html", "<head", "<body", "<div", "<span", "<p", "<a", "<img",
+             "<input", "<form", "<table", "<tr", "<td", "<th", "<ul", "<li",
+             "<ol", "<h1", "<h2", "<h3", "<h4", "<h5", "<h6", "<script",
+             "<style", "<meta", "<link", "<title", "<br", "<hr", "<pre",
+             "<code", "<em", "<strong", "<b", "<i", "<u", "<s"},
+    "css": {"@import", "@media", "@keyframes", "@font-face", "important",
+            "inherit", "initial", "none", "auto", "solid", "dashed",
+            "dotted", "relative", "absolute", "fixed", "flex", "grid",
+            "block", "inline", "hidden", "visible", "center", "left",
+            "right", "top", "bottom", "repeat", "cover", "contain"},
+    "c": {"int", "float", "double", "char", "void", "long", "short",
+          "unsigned", "signed", "struct", "union", "enum", "typedef",
+          "const", "static", "extern", "volatile", "register", "auto",
+          "if", "else", "for", "while", "do", "switch", "case", "break",
+          "continue", "return", "sizeof", "NULL", "true", "false",
+          "include", "define", "ifdef", "ifndef", "endif", "pragma"},
+    "rs": {"fn", "let", "mut", "const", "if", "else", "for", "while",
+           "loop", "match", "return", "struct", "enum", "impl", "trait",
+           "pub", "use", "mod", "crate", "self", "super", "where", "as",
+           "in", "ref", "move", "async", "await", "dyn", "true", "false",
+           "Some", "None", "Ok", "Err"},
+    "go": {"func", "var", "const", "if", "else", "for", "range", "switch",
+           "case", "break", "continue", "return", "defer", "go", "select",
+           "chan", "map", "struct", "interface", "type", "package",
+           "import", "true", "false", "nil", "make", "new", "append",
+           "len", "cap"},
+    "rb": {"def", "class", "module", "if", "elsif", "else", "unless",
+           "for", "while", "until", "do", "end", "return", "yield",
+           "begin", "rescue", "ensure", "raise", "catch", "throw",
+           "self", "nil", "true", "false", "and", "or", "not",
+           "require", "include", "extend", "attr_accessor", "attr_reader"},
+    "sh": {"if", "then", "elif", "else", "fi", "for", "while", "do",
+           "done", "case", "esac", "function", "return", "exit", "export",
+           "local", "source", "echo", "read", "set", "unset"},
+    "lua": {"function", "local", "if", "then", "else", "elseif", "end",
+            "for", "while", "repeat", "until", "return", "do", "in",
+            "nil", "true", "false", "and", "or", "not", "self"},
+}
+
+BUILTINS = {
+    "py": {"print", "len", "range", "type", "str", "int", "float", "list",
+           "dict", "set", "tuple", "open", "input", "isinstance", "hasattr",
+           "getattr", "setattr", "super", "enumerate", "zip", "map",
+           "filter", "sorted", "reversed", "min", "max", "sum", "abs",
+           "round", "bool", "bytes", "object", "property", "classmethod",
+           "staticmethod", "__init__", "__str__", "__repr__", "__name__",
+           "__file__", "ValueError", "TypeError", "KeyError", "IndexError",
+           "Exception", "RuntimeError", "OSError", "FileNotFoundError"},
+    "js": {"console", "Math", "JSON", "Array", "Object", "String",
+           "Number", "Boolean", "Date", "RegExp", "Map", "Set",
+           "Promise", "Symbol", "parseInt", "parseFloat", "isNaN",
+           "setTimeout", "setInterval", "fetch", "document", "window",
+           "localStorage", "sessionStorage", "require", "module",
+           "__dirname", "__filename", "process", "Buffer"},
+}
+
+STRING_PAT = re.compile(r'''("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')''')
+COMMENT_PAT = re.compile(r"(#.*|//.*|/\*[\s\S]*?\*/|<!--[\s\S]*?-->)")
+NUM_PAT = re.compile(r"\b\d+\.?\d*(?:[eE][+-]?\d+)?\b")
+
+
+def highlight_line(line, lang):
+    tokens = []
+    i = 0
+    while i < len(line):
+        m = COMMENT_PAT.match(line, i)
+        if m and lang in ("py", "sh", "rb", "lua", "yaml", "toml", "ini",
+                          "js", "ts", "c", "rs", "go", "css"):
+            tokens.append((m.group(), 4))
+            i = m.end()
+            continue
+
+        if lang in ("html",) and i < len(line) - 3:
+            rest = line[i:]
+            cm = re.match(r"<!--[\s\S]*?-->", rest)
+            if cm:
+                tokens.append((cm.group(), 4))
+                i += cm.end()
+                continue
+
+        m = STRING_PAT.match(line, i)
+        if m and lang:
+            tokens.append((m.group(), 5))
+            i = m.end()
+            continue
+
+        if lang == "py" and line[i] == "@":
+            end = i + 1
+            while end < len(line) and (line[end].isalnum() or line[end] == "_"):
+                end += 1
+            if end > i + 1:
+                tokens.append((line[i:end], 6))
+                i = end
+                continue
+
+        if lang == "py" and line[i] == ".":
+            end = i + 1
+            while end < len(line) and (line[end].isalnum() or line[end] == "_"):
+                end += 1
+            word = line[i + 1 : end]
+            if word and word in BUILTINS.get("py", set()):
+                tokens.append((line[i:end], 7))
+                i = end
+                continue
+
+        if line[i].isalnum() or line[i] == "_":
+            end = i
+            while end < len(line) and (line[end].isalnum() or line[end] == "_"):
+                end += 1
+            word = line[i:end]
+            if lang and word in KEYWORDS.get(lang, set()):
+                tokens.append((word, 3))
+            elif lang and word in BUILTINS.get(lang, set()):
+                tokens.append((word, 7))
+            elif NUM_PAT.fullmatch(word) and word.isdigit():
+                tokens.append((word, 8))
+            else:
+                tokens.append((word, 0))
+            i = end
+            continue
+
+        if line[i].isdigit() or (line[i] == "." and i + 1 < len(line) and line[i + 1].isdigit()):
+            end = i + 1
+            while end < len(line) and (line[end].isdigit() or line[end] in ".eE+-"):
+                end += 1
+            tokens.append((line[i:end], 8))
+            i = end
+            continue
+
+        tokens.append((line[i], 0))
+        i += 1
+
+    return tokens
 
 
 def main(stdscr):
@@ -14,12 +173,19 @@ def main(stdscr):
     if curses.has_colors():
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.init_pair(2, curses.COLOR_CYAN, -1)
+        curses.init_pair(3, curses.COLOR_BLUE, -1)
+        curses.init_pair(4, curses.COLOR_WHITE, -1)
+        curses.init_pair(5, curses.COLOR_GREEN, -1)
+        curses.init_pair(6, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(7, curses.COLOR_CYAN, -1)
+        curses.init_pair(8, curses.COLOR_YELLOW, -1)
 
     lines = [""]
     x, y = 0, 0
     top = 0
     modified = False
     filename = FILE or "Untitled"
+    lang = get_lang(filename)
     msg = ""
 
     if FILE and os.path.isfile(FILE):
@@ -52,23 +218,32 @@ def main(stdscr):
 
     while True:
         h, w = stdscr.getmaxyx()
-        status = f" {filename}{' *' if modified else ''}  |  Ln {y+1}, Col {x+1}  |  Ctrl+S save  Ctrl+Q quit  Ctrl+Z undo"
+        status = f" {filename}{' *' if modified else ''}  |  Ln {y+1}, Col {x+1}  |  Ctrl+S save  Ctrl+Q quit"
         if msg:
             status += f"  |  {msg}"
             msg = ""
 
         stdscr.erase()
         line_num_w = len(str(len(lines)))
+        max_w = w - line_num_w - 2
 
         for i, line in enumerate(lines):
             if i < top or i >= top + h - 1:
                 continue
             num = f"{i+1:>{line_num_w}} "
             stdscr.addstr(i - top, 0, num, curses.color_pair(2))
-            try:
-                stdscr.addstr(i - top, line_num_w + 1, line[: w - line_num_w - 2])
-            except curses.error:
-                pass
+
+            visible = line[:max_w]
+            tokens = highlight_line(visible, lang)
+            col = line_num_w + 1
+            for text, pair_id in tokens:
+                if col + len(text) > w:
+                    text = text[: w - col]
+                try:
+                    stdscr.addstr(i - top, col, text, curses.color_pair(pair_id))
+                except curses.error:
+                    break
+                col += len(text)
 
         stdscr.attron(curses.color_pair(1))
         stdscr.addstr(h - 1, 0, status[: w - 1])
@@ -114,6 +289,7 @@ def main(stdscr):
                 curses.noecho()
                 if fn:
                     filename = fn
+                    lang = get_lang(filename)
                 else:
                     msg = "Save cancelled"
                     continue

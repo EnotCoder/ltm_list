@@ -249,7 +249,9 @@ def main(stdscr):
         stdscr.addstr(h - 1, 0, status[: w - 1])
         stdscr.attroff(curses.color_pair(1))
 
-        stdscr.move(y - top + 0 if y >= top else 0, x + line_num_w + 1 if y >= top else 0)
+        cursor_y = max(0, min(y - top, h - 2))
+        cursor_x = max(0, min(x + line_num_w + 1, w - 1))
+        stdscr.move(cursor_y, cursor_x)
 
         key = stdscr.getch()
 

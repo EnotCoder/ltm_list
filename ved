@@ -168,7 +168,7 @@ def highlight_line(line, lang):
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(1)
-    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON4_PRESSED | curses.BUTTON5_PRESSED)
+    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON1_RELEASED | curses.REPORT_MOUSE_POSITION | curses.BUTTON4_PRESSED | curses.BUTTON5_PRESSED)
     stdscr.keypad(True)
     if curses.has_colors():
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
@@ -187,6 +187,8 @@ def main(stdscr):
     filename = FILE or "Untitled"
     lang = get_lang(filename)
     msg = ""
+    sel_anchor = None
+    sel_end = None
 
     if FILE and os.path.isfile(FILE):
         with open(FILE) as f:
@@ -216,6 +218,15 @@ def main(stdscr):
             if x > len(lines[y]):
                 x = len(lines[y])
 
+    def sel_range():
+        if sel_anchor is None or sel_end is None:
+            return None
+        ay, ax = sel_anchor
+        ey, ex = sel_end
+        if ay < ey or (ay == ey and ax <= ex):
+            return (ay, ax, ey, ex)
+        return (ey, ex, ay, ax)
+
     while True:
         h, w = stdscr.getmaxyx()
         status = f" {filename}{' *' if modified else ''}  |  Ln {y+1}, Col {x+1}  |  Ctrl+S save  Ctrl+Q quit"
@@ -236,14 +247,26 @@ def main(stdscr):
             visible = line[:max_w]
             tokens = highlight_line(visible, lang)
             col = line_num_w + 1
+            sr = sel_range()
             for text, pair_id in tokens:
                 if col + len(text) > w:
                     text = text[: w - col]
-                try:
-                    stdscr.addstr(i - top, col, text, curses.color_pair(pair_id))
-                except curses.error:
-                    break
-                col += len(text)
+                for ch in text:
+                    if sr and sr[0] <= i <= sr[2] and (
+                        (i > sr[0] and i < sr[2]) or
+                        (i == sr[0] and col >= sr[1]) or
+                        (i == sr[2] and col < sr[3])
+                    ):
+                        try:
+                            stdscr.addch(i - top, col, ch, curses.color_pair(pair_id) | curses.A_REVERSE)
+                        except curses.error:
+                            pass
+                    else:
+                        try:
+                            stdscr.addch(i - top, col, ch, curses.color_pair(pair_id))
+                        except curses.error:
+                            pass
+                    col += 1
 
         stdscr.attron(curses.color_pair(1))
         stdscr.addstr(h - 1, 0, status[: w - 1])
@@ -258,19 +281,35 @@ def main(stdscr):
         if key == curses.KEY_MOUSE:
             try:
                 _, mx, my, _, bstate = curses.getmouse()
-                if bstate & curses.BUTTON1_PRESSED:
+                if bstate & (curses.BUTTON1_PRESSED | curses.BUTTON1_RELEASED):
                     ly = my
                     if ly >= len(lines):
                         continue
-                    y = top + ly
-                    if y >= len(lines):
-                        y = len(lines) - 1
-                    lx = mx - line_num_w - 1
-                    if lx < 0:
-                        lx = 0
-                    if lx > len(lines[y]):
-                        lx = len(lines[y])
-                    x = lx
+                    cy = top + ly
+                    if cy >= len(lines):
+                        cy = len(lines) - 1
+                    cx = mx - line_num_w - 1
+                    if cx < 0:
+                        cx = 0
+                    if cx > len(lines[cy]):
+                        cx = len(lines[cy])
+                    if bstate & curses.BUTTON1_PRESSED:
+                        sel_anchor = (cy, cx)
+                        sel_end = (cy, cx)
+                    y, x = cy, cx
+                elif bstate & curses.REPORT_MOUSE_POSITION:
+                    if sel_anchor is not None:
+                        ly = my
+                        if ly < len(lines):
+                            cy = top + ly
+                            if cy >= len(lines):
+                                cy = len(lines) - 1
+                            cx = mx - line_num_w - 1
+                            if cx < 0:
+                                cx = 0
+                            if cx > len(lines[cy]):
+                                cx = len(lines[cy])
+                            sel_end = (cy, cx)
                 elif bstate & curses.BUTTON4_PRESSED:
                     top = max(0, top - 1)
                 elif bstate & curses.BUTTON5_PRESSED:
@@ -304,6 +343,8 @@ def main(stdscr):
         if key == 26:
             msg = "Undo not implemented yet"
             continue
+
+        sel_anchor = sel_end = None
 
         if key == curses.KEY_DOWN:
             cursor_down()

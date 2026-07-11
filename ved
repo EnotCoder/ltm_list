@@ -168,9 +168,8 @@ def highlight_line(line, lang):
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(1)
-    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED | curses.BUTTON4_PRESSED | curses.BUTTON5_PRESSED)
+    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON4_PRESSED | curses.BUTTON5_PRESSED)
     stdscr.keypad(True)
-    stdscr.timeout(50)
     if curses.has_colors():
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.init_pair(2, curses.COLOR_CYAN, -1)
@@ -259,7 +258,7 @@ def main(stdscr):
         if key == curses.KEY_MOUSE:
             try:
                 _, mx, my, _, bstate = curses.getmouse()
-                if bstate & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED):
+                if bstate & curses.BUTTON1_PRESSED:
                     ly = my
                     if ly >= len(lines):
                         continue

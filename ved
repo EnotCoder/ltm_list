@@ -9,7 +9,7 @@ FILE = sys.argv[1] if len(sys.argv) > 1 else None
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(1)
-    curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+    curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON4_PRESSED | curses.BUTTON5_PRESSED)
     stdscr.keypad(True)
     if curses.has_colors():
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
@@ -81,7 +81,7 @@ def main(stdscr):
         if key == curses.KEY_MOUSE:
             try:
                 _, mx, my, _, bstate = curses.getmouse()
-                if bstate & curses.BUTTON1_CLICKED:
+                if bstate & curses.BUTTON1_PRESSED:
                     ly = my
                     if ly >= len(lines):
                         continue

@@ -98,13 +98,15 @@ def effect_matrix(_, __, stop):
 
 
 def effect_fire(_, __, stop):
-    fire_h = 14
+    fire_h = 16
     fire = None
+    embers = []
     prev_cols = 0
     t = 0.0
+    BLOCKS = " ░▒▓█"
 
     while not stop[0]:
-        t += 0.05
+        t += 0.03
         cols = max(1, term_size[0])
         lines = max(1, term_size[1])
 
@@ -113,24 +115,54 @@ def effect_fire(_, __, stop):
             prev_cols = cols
 
         for c in range(cols):
-            fire[fire_h - 1][c] = random.randint(150, 255)
+            f = 0.7 + 0.3 * math.sin(c * 0.3 + t * 8)
+            fire[fire_h - 1][c] = int(random.randint(160, 255) * f)
 
         for y in range(fire_h - 2, -1, -1):
+            wind = int(math.sin((y + t * 3) * 2.0) * 1.2 + math.sin((y + t * 2) * 1.3) * 0.6)
             for x in range(cols):
-                src = 0
-                count = 0
-                for dx in (-1, 0, 1):
-                    nx = x + dx
+                src, cnt = 0, 0
+                for dx in (-2, -1, 0, 1, 2):
+                    nx = x + dx + wind
                     if 0 <= nx < cols:
                         src += fire[y + 1][nx]
-                        count += 1
-                v = src // count
-                v -= random.randint(0, 5 + y)
-                fire[y][x] = max(0, v)
+                        cnt += 1
+                v = src // max(1, cnt)
+                v -= random.randint(0, 3 + y // 3)
+                fire[y][x] = max(0, min(255, v))
 
-        cutoff = [int(6 + math.sin((x + t * 3) * 0.3) * 4 + math.sin((x + t * 2) * 0.7) * 2) for x in range(cols)]
+        base = fire_h * 0.25
+        cutoff = [
+            int(base + math.sin((x + t * 2) * 0.3) * fire_h * 0.35
+                + math.sin((x + t * 3.7) * 0.7) * fire_h * 0.15
+                + math.sin((x + t * 1.3) * 1.1) * fire_h * 0.1)
+            for x in range(cols)
+        ]
+
+        if random.random() < 0.35:
+            for _ in range(random.randint(0, 3)):
+                embers.append({
+                    'x': random.uniform(0, cols - 1),
+                    'y': random.uniform(fire_h * 0.3, fire_h),
+                    'vx': random.uniform(-0.4, 0.4),
+                    'vy': random.uniform(-1.2, -0.3),
+                    'life': random.uniform(0.3, 1.2),
+                })
+        alive = []
+        for e in embers:
+            e['x'] += e['vx']
+            e['y'] += e['vy']
+            e['life'] -= 0.04
+            if e['life'] > 0 and 0 <= e['x'] < cols and e['y'] > 0:
+                alive.append(e)
+        embers = alive
 
         out = []
+        ember_layer = {}
+        for e in embers:
+            ex, ey = int(e['x']), int(e['y'])
+            ember_layer[(ex, ey)] = max(ember_layer.get((ex, ey), 0), e['life'])
+
         for y in range(lines):
             if y < lines - fire_h:
                 out.append(" " * cols)
@@ -139,20 +171,34 @@ def effect_fire(_, __, stop):
                 row = []
                 for x in range(cols):
                     v = fire[fy][x]
-                    if fy < cutoff[x] or v == 0:
+                    if fy < cutoff[x] or v < 3:
                         row.append(" ")
-                    elif v < 60:
-                        row.append(f"\033[38;5;{52}m#\033[0m")
+                        continue
+                    block = min(4, v * 5 // 256)
+                    if v < 40:
+                        row.append(f"\033[38;5;{52}m{BLOCKS[block]}\033[0m")
+                    elif v < 80:
+                        row.append(f"\033[38;5;{88}m{BLOCKS[block]}\033[0m")
                     elif v < 120:
-                        row.append(f"\033[38;5;{9}m#\033[0m")
-                    elif v < 180:
-                        row.append(f"\033[38;5;{214}m#\033[0m")
+                        row.append(f"\033[38;5;{124}m{BLOCKS[block]}\033[0m")
+                    elif v < 160:
+                        row.append(f"\033[38;5;{196}m{BLOCKS[block]}\033[0m")
+                    elif v < 200:
+                        row.append(f"\033[38;5;{208}m{BLOCKS[block]}\033[0m")
                     else:
-                        row.append(f"\033[38;5;{226}m#\033[0m")
+                        row.append(f"\033[38;5;{226}m{BLOCKS[block]}\033[0m")
+                for (ex, ey), life in ember_layer.items():
+                    if ey == fy and 0 <= ex < cols:
+                        if life > 0.6:
+                            row[ex] = f"\033[38;5;226;1m*\033[0m"
+                        elif life > 0.3:
+                            row[ex] = f"\033[38;5;214m.\033[0m"
+                        else:
+                            row[ex] = f"\033[38;5;166m.\033[0m"
                 out.append("".join(row))
         sys.stdout.write("\x1b[H" + "\n".join(out))
         sys.stdout.flush()
-        time.sleep(SPEED * 2)
+        time.sleep(SPEED * 1.5)
         k = getch(0)
         if k:
             stop[0] = True

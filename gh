@@ -1,8 +1,46 @@
 #!/usr/bin/env python3
 import sys
 import webbrowser
+import requests
+import datetime
 
 BASE = "https://github.com"
+API = "https://api.github.com"
+
+
+def commits_today(username):
+    today = datetime.date.today().isoformat()
+    total = 0
+    for page in range(1, 4):
+        resp = requests.get(f"{API}/users/{username}/events",
+                            params={"per_page": 100, "page": page}, timeout=10)
+        if resp.status_code != 200:
+            return None
+        events = resp.json()
+        if not events:
+            break
+        for event in events:
+            if event["type"] != "PushEvent" or event["created_at"][:10] != today:
+                continue
+            repo = event["repo"]["name"]
+            head = event["payload"]["head"]
+            before = event["payload"]["before"]
+            if before == "0" * 40:
+                c = f"{API}/repos/{repo}/commits?sha={head}&per_page=1"
+                r = requests.get(c, timeout=10)
+                if r.status_code == 200:
+                    total += len(r.json())
+                else:
+                    total += 1
+            else:
+                c = f"{API}/repos/{repo}/compare/{before}...{head}"
+                r = requests.get(c, timeout=10)
+                if r.status_code == 200:
+                    total += r.json()["total_commits"]
+                else:
+                    total += 1
+    return total
+
 
 def main():
     if len(sys.argv) == 1:
@@ -11,6 +49,20 @@ def main():
         return
 
     args = sys.argv[1:]
+
+    if "-s" in args:
+        idx = args.index("-s")
+        user = args[idx - 1]
+        if user.startswith("-"):
+            print("Использование: gh <user> -s")
+            sys.exit(1)
+        n = commits_today(user)
+        if n is not None:
+            print(f"{user} — {n} коммитов сегодня")
+        else:
+            print(f"Не удалось получить данные для {user}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     if len(args) == 1 and "/" in args[0]:
         user, repo = args[0].split("/", 1)
@@ -26,10 +78,12 @@ def main():
         print("  gh <user>              # профиль пользователя")
         print("  gh <user> <repo>       # репозиторий")
         print("  gh <user/repo>         # репозиторий")
+        print("  gh <user> -s           # коммитов сегодня")
         sys.exit(1)
 
     webbrowser.open(url)
     print(f"Открыто: {url}")
+
 
 if __name__ == "__main__":
     main()

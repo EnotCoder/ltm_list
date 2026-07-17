@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+import curses
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+
+
+def find_music(path):
+    exts = frozenset({".mp3", ".flac", ".ogg", ".m4a", ".wav", ".opus", ".wma", ".aac", ".ape", ".aiff", ".wv"})
+    if os.path.isfile(path):
+        return [path]
+    res = []
+    for root, dirs, names in os.walk(path):
+        dirs.sort()
+        for n in sorted(names):
+            if os.path.splitext(n)[1].lower() in exts:
+                res.append(os.path.join(root, n))
+    return res
+
+
+def fmt_time(secs):
+    if secs is None:
+        return "--:--"
+    secs = int(secs)
+    h, m = divmod(secs, 3600)
+    m, s = divmod(m, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def ffprobe_get(path, key):
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", f"format={key}",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            capture_output=True, text=True, timeout=5
+        )
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+
+class Player:
+    def __init__(self, files):
+        self.files = files
+        self.idx = 0
+        self.paused = False
+        self.time_pos = 0.0
+        self.duration = 0.0
+        self.volume = 100
+        self.metadata = {}
+        self._running = True
+        self.proc = None
+
+        dur = ffprobe_get(files[0], "duration")
+        try:
+            self.duration = float(dur)
+        except ValueError:
+            self.duration = 0
+
+        meta_artist = ffprobe_get(files[0], "tag.artist")
+        meta_title = ffprobe_get(files[0], "tag.title")
+        if meta_artist:
+            self.metadata["artist"] = meta_artist
+        if meta_title:
+            self.metadata["title"] = meta_title
+
+        self._start(files[0])
+
+    def _start(self, path):
+        if self.proc:
+            self._stop()
+        self.time_pos = 0.0
+        self.proc = subprocess.Popen(
+            ["mplayer", "-slave", "-quiet", "-nolirc",
+             "-ao", "pulse", path],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, bufsize=0
+        )
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        self.cmd(f"volume {self.volume} 1")
+
+    def _stop(self):
+        try:
+            self.cmd("quit")
+            self.proc.wait(timeout=1)
+        except Exception:
+            try:
+                self.proc.kill()
+                self.proc.wait()
+            except Exception:
+                pass
+        self.proc = None
+
+    def cmd(self, line):
+        if self.proc and self.proc.stdin:
+            try:
+                self.proc.stdin.write((line + "\n").encode())
+                self.proc.stdin.flush()
+            except (BrokenPipeError, OSError):
+                pass
+
+    def poll(self):
+        if not self.proc or self.proc.poll() is not None:
+            if self._running and self.idx + 1 < len(self.files):
+                self.idx += 1
+                self._change_track(self.files[self.idx])
+            return
+
+        self.cmd("get_time_pos")
+        self.cmd("get_time_length")
+        self.cmd("get_property volume")
+
+        r, _, _ = select.select([self.proc.stdout], [], [], 0.05)
+        if r:
+            try:
+                data = os.read(self.proc.stdout.fileno(), 4096)
+            except (BlockingIOError, OSError):
+                return
+            for line in data.decode("utf-8", "replace").split("\n"):
+                if line.startswith("ANS_"):
+                    parts = line.split("=", 1)
+                    if len(parts) != 2:
+                        continue
+                    key, val = parts
+                    key = key[4:]
+                    if key == "TIME_POSITION":
+                        try:
+                            self.time_pos = float(val)
+                        except ValueError:
+                            pass
+                    elif key == "LENGTH":
+                        try:
+                            self.duration = float(val)
+                        except ValueError:
+                            pass
+                    elif key == "volume":
+                        try:
+                            self.volume = int(float(val))
+                        except (ValueError, TypeError):
+                            pass
+
+    def _change_track(self, path):
+        dur = ffprobe_get(path, "duration")
+        try:
+            self.duration = float(dur)
+        except ValueError:
+            self.duration = 0
+        meta_artist = ffprobe_get(path, "tag.artist")
+        meta_title = ffprobe_get(path, "tag.title")
+        self.metadata = {}
+        if meta_artist:
+            self.metadata["artist"] = meta_artist
+        if meta_title:
+            self.metadata["title"] = meta_title
+        self._start(path)
+
+    def pause(self):
+        if self.paused:
+            self.cmd("mute 0")
+            try:
+                self.proc.send_signal(signal.SIGCONT)
+            except Exception:
+                pass
+            self.paused = False
+        else:
+            self.cmd("mute 1")
+            self.cmd("get_time_pos")
+            self.cmd("get_property volume")
+            time.sleep(0.05)
+            try:
+                self.proc.send_signal(signal.SIGSTOP)
+            except Exception:
+                pass
+            self.paused = True
+
+    def seek(self, secs):
+        self.cmd(f"seek {secs} 0")
+
+    def set_volume(self, val):
+        self.volume = val
+        self.cmd(f"volume {int(val)} 1")
+
+    def next(self):
+        if self.idx + 1 < len(self.files):
+            self.idx += 1
+            self._change_track(self.files[self.idx])
+
+    def prev(self):
+        if self.idx - 1 >= 0:
+            self.idx -= 1
+            self._change_track(self.files[self.idx])
+
+    def stop(self):
+        self._running = False
+        self._stop()
+
+
+def draw(stdscr, files, player, filename):
+    h, w = stdscr.getmaxyx()
+    cols = w - 1
+
+    dur = player.duration or 0
+    artist = player.metadata.get("artist", "")
+    title = player.metadata.get("title", "")
+    display = f"{artist} - {title}" if artist and title else filename
+
+    stdscr.addstr(0, 0, " ♫ VOL".ljust(cols), curses.A_REVERSE)
+
+    if display:
+        stdscr.addstr(2, 0, f"  {display[:cols-4]}")
+
+    if player.time_pos is not None and dur > 0:
+        pct = min(1.0, player.time_pos / dur)
+        bar_w = min(cols - 18, 40)
+        filled = int(bar_w * pct)
+        bar = "━" * filled + "─" * (bar_w - filled)
+        ts = f" {fmt_time(player.time_pos)} / {fmt_time(dur)}"
+        stdscr.addstr(3, 2, bar)
+        stdscr.addstr(3, 2 + bar_w + 1, ts)
+    else:
+        stdscr.addstr(3, 2, "─" * min(cols - 18, 40))
+        stdscr.addstr(3, 2 + min(cols - 18, 40) + 1, "  --:-- / --:--")
+
+    icon = "▶" if player.paused else "⏸"
+    ctrl = f"  ⏮  {icon}  ⏭     Громкость: {player.volume:3d}%"
+    stdscr.addstr(5, 0, ctrl[:cols])
+    if player.paused:
+        stdscr.addstr(5, cols - 10, "[ПАУЗА]", curses.A_BOLD)
+
+    help_txt = "Space: пауза  ←→: -/+5с  ↑↓: громкость  n/p: трек  q: выход"
+    stdscr.addstr(h - 1, 0, help_txt[:cols], curses.A_DIM)
+
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else "."
+    files = find_music(path)
+    if not files:
+        print(f"Нет музыкальных файлов: {path}", file=sys.stderr)
+        sys.exit(1)
+
+    player = Player(files)
+
+    stdscr = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    stdscr.keypad(True)
+    curses.curs_set(0)
+    stdscr.nodelay(True)
+    curses.start_color()
+    curses.use_default_colors()
+    signal.signal(signal.SIGWINCH, lambda *_: None)
+
+    try:
+        running = True
+        while running:
+            player.poll()
+
+            stdscr.erase()
+            draw(stdscr, files, player, os.path.basename(files[player.idx]))
+            stdscr.refresh()
+
+            for _ in range(4):
+                time.sleep(0.04)
+                k = stdscr.getch()
+                if k == curses.KEY_RESIZE:
+                    curses.resizeterm(*os.get_terminal_size())
+                elif k == ord(" "):
+                    player.pause()
+                elif k == ord("q"):
+                    running = False
+                elif k == curses.KEY_LEFT:
+                    player.seek(-5)
+                elif k == curses.KEY_RIGHT:
+                    player.seek(5)
+                elif k == curses.KEY_UP:
+                    player.set_volume(min(100, player.volume + 5))
+                elif k == curses.KEY_DOWN:
+                    player.set_volume(max(0, player.volume - 5))
+                elif k == ord("n"):
+                    player.next()
+                elif k == ord("p"):
+                    player.prev()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        curses.endwin()
+        player.stop()
+
+
+if __name__ == "__main__":
+    main()

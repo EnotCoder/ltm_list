@@ -1,0 +1,451 @@
+#!/usr/bin/env python3
+import curses
+import time
+import random
+import sys
+
+G = 0.55
+JUMP_V = -3.0
+ACCEL = 0.40
+FRIC = 0.85
+MAX_SPD = 3.5
+
+LEVEL = [
+    "                                                                                                                                                                                     ",
+    "                                                                                                                                                                                     ",
+    "                                                                                                                              E                                                     ",
+    "                                                                                                                                                                                     ",
+    "                           ##########                                                                                   ##########                                                  ",
+    "                                                                                                                                                                                     ",
+    "                                                                                                                                                                                     ",
+    "                                                                      ##########                                                                                                      ",
+    "                                                     ..                                                                                                                               ",
+    "                                                                                                                                                                                     ",
+    "                                    ##########                                                                                             ##########                                ",
+    "                                                                                                                                                E                                    ",
+    "                                                                                                            ##########                                                               ",
+    "                                                                                               ..                                                                                     ",
+    "                  ##########                                                                                                                             ########.F                  ",
+    "                                                                                                                                                                                     ",
+    "                                                               ##########                                                            ##########                                      ",
+    "                                                                                                                                                                                     ",
+    "                                                              E                                                                                                                       ",
+    "P                                                                                                                                                                                    ",
+    "#######################################################################  ##########################################  ################################################################",
+]
+
+
+def pad_level(level):
+    w = max(len(r) for r in level)
+    return [list(r.ljust(w)) for r in level]
+
+
+class Game:
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+        self.level = pad_level(LEVEL)
+        self.lw = len(self.level[0])
+        self.lh = len(self.level)
+
+        self.px = 2.0
+        self.py = float(self.lh - 2)
+        self.pvx = 0.0
+        self.pvy = 0.0
+        self.on_ground = False
+        self.lives = 3
+        self.score = 0
+        self.combo = 0
+
+        self.coins = set()
+        self.enemies = []
+        self.flag_pos = None
+        self._scan_level()
+
+        self.particles = []
+        self.respawn_timer = 0
+        self.game_over = False
+        self.won = False
+        self.frame = 0
+        self.input_dir = 0
+        self.input_hold = 0
+
+        h, w = stdscr.getmaxyx()
+        self.cam_x = 0
+        self.cam_y = 0
+        self.screen_h = h
+        self.screen_w = w
+
+    def _scan_level(self):
+        for y in range(self.lh):
+            for x in range(self.lw):
+                ch = self.level[y][x]
+                if ch == '.':
+                    self.coins.add((x, y))
+                    self.level[y][x] = ' '
+                elif ch == 'E':
+                    self.enemies.append({'x': float(x), 'y': float(y), 'dir': 1, 'alive': True})
+                    self.level[y][x] = ' '
+                elif ch == 'F':
+                    self.flag_pos = (x, y)
+                    self.level[y][x] = ' '
+                elif ch == 'P':
+                    self.px = float(x)
+                    self.py = float(y)
+                    self.level[y][x] = ' '
+
+    def is_solid(self, x, y):
+        if x < 0 or x >= self.lw or y < 0 or y >= self.lh:
+            return True
+        return self.level[y][x] == '#'
+
+    def update(self, keys):
+        self.frame += 1
+        if self.respawn_timer > 0:
+            self.respawn_timer -= 1
+            if self.respawn_timer == 0:
+                self._respawn()
+            return
+        if self.game_over or self.won:
+            return
+
+        mx = self.input_dir
+        jump = False
+        fresh = False
+        for k in keys:
+            if k == curses.KEY_LEFT:
+                self.input_dir = -1
+                self.input_hold = 4
+                fresh = True
+            elif k == curses.KEY_RIGHT:
+                self.input_dir = 1
+                self.input_hold = 4
+                fresh = True
+            elif k in (curses.KEY_UP, ord(' ')):
+                jump = True
+        if fresh:
+            mx = self.input_dir
+        elif self.input_hold > 0:
+            mx = self.input_dir
+            self.input_hold -= 1
+        else:
+            self.input_dir = 0
+
+        self.pvx += mx * ACCEL
+        self.pvx *= FRIC
+        if abs(self.pvx) > MAX_SPD:
+            self.pvx = MAX_SPD if self.pvx > 0 else -MAX_SPD
+        if abs(self.pvx) < 0.05:
+            self.pvx = 0.0
+
+        if jump and self.on_ground:
+            self.pvy = JUMP_V
+            self.on_ground = False
+            for _ in range(4):
+                self.particles.append({
+                    'x': self.px, 'y': self.py + 0.5,
+                    'vx': random.uniform(-0.4, 0.4), 'vy': random.uniform(-0.3, 0.0),
+                    'life': 12, 'ch': ':', 'color': 4
+                })
+
+        self.pvy += G
+        if self.pvy > 6:
+            self.pvy = 6
+
+        nx = self.px + self.pvx
+        ny = self.py + self.pvy
+
+        rtx = int(self.px)
+        rty = int(self.py)
+
+        if self.pvx > 0:
+            ttx = int(nx)
+            if ttx > rtx:
+                for tx in range(rtx + 1, ttx + 1):
+                    if self.is_solid(tx, rty):
+                        nx = float(tx) - 0.001
+                        self.pvx = 0.0
+                        break
+        elif self.pvx < 0:
+            ttx = int(nx)
+            if ttx < rtx:
+                for tx in range(rtx - 1, ttx - 1, -1):
+                    if self.is_solid(tx, rty):
+                        nx = float(tx + 1)
+                        self.pvx = 0.0
+                        break
+        self.px = nx
+
+        rtx = int(self.px)
+        self.on_ground = False
+        if self.pvy > 0:
+            tty = int(ny)
+            if tty > rty:
+                for ty in range(rty + 1, tty + 1):
+                    if self.is_solid(rtx, ty):
+                        ny = float(ty) - 0.001
+                        self.pvy = 0.0
+                        self.on_ground = True
+                        break
+        elif self.pvy < 0:
+            tty = int(ny)
+            if tty < rty:
+                for ty in range(rty - 1, tty - 1, -1):
+                    if self.is_solid(rtx, ty):
+                        ny = float(ty + 1)
+                        self.pvy = 0.0
+                        break
+        self.py = ny
+        if self.pvy == 0 and not self.on_ground:
+            self.on_ground = self.is_solid(rtx, int(self.py) + 1)
+
+        rt = (int(self.px), int(self.py))
+        if rt in self.coins:
+            self.coins.discard(rt)
+            self.combo += 1
+            self.score += 10 + min(self.combo * 2, 20)
+            for _ in range(6):
+                self.particles.append({
+                    'x': float(rt[0]), 'y': float(rt[1]),
+                    'vx': random.uniform(-0.6, 0.6), 'vy': random.uniform(-0.6, 0.1),
+                    'life': 18, 'ch': random.choice(['*', '+', '.']), 'color': 3
+                })
+        else:
+            self.combo = 0
+
+        for e in self.enemies:
+            if not e['alive']:
+                continue
+            ex = e['x'] + e['dir'] * 0.025
+            et = int(ex)
+            if self.is_solid(et, int(e['y'])) or et < 0 or et >= self.lw:
+                e['dir'] *= -1
+            else:
+                e['x'] = ex
+            if abs(self.px - e['x']) < 0.8 and abs(self.py - e['y']) < 0.8:
+                if self.pvy > 0 and self.py < e['y']:
+                    e['alive'] = False
+                    self.pvy = JUMP_V * 0.7
+                    self.score += 50
+                    for _ in range(8):
+                        self.particles.append({
+                            'x': e['x'], 'y': e['y'],
+                            'vx': random.uniform(-0.5, 0.5), 'vy': random.uniform(-0.5, 0.3),
+                            'life': 20, 'ch': random.choice(['*', '!', '.']), 'color': 2
+                        })
+                else:
+                    self._die()
+
+        if self.flag_pos:
+            fx, fy = self.flag_pos
+            if int(self.px) == fx and int(self.py) == fy:
+                self.won = True
+
+        if self.py > self.lh + 2:
+            self._die()
+
+        self.particles = [p for p in self.particles if p['life'] > 0]
+        for p in self.particles:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            p['vy'] += 0.02
+            p['life'] -= 1
+
+        self._update_camera()
+
+    def _update_camera(self):
+        h, w = self.stdscr.getmaxyx()
+        self.screen_h = h
+        self.screen_w = w
+        self.cam_x = max(0, min(int(self.px) - w // 2, self.lw - w))
+        self.cam_y = max(0, min(int(self.py) - h // 2, self.lh - h))
+
+    def _die(self):
+        self.lives -= 1
+        if self.lives <= 0:
+            self.game_over = True
+        else:
+            self.respawn_timer = 25
+
+    def _respawn(self):
+        self.px = 2.0
+        self.py = float(self.lh - 2)
+        self.pvx = 0.0
+        self.pvy = 0.0
+        self.on_ground = False
+
+    def draw(self):
+        self.stdscr.erase()
+        h, w = self.stdscr.getmaxyx()
+        if h < 2 or w < 2:
+            return
+        c = max(0, min(int(self.px) - w // 2, self.lw - w))
+        r = max(0, min(int(self.py) - h // 2, self.lh - h))
+        self.cam_x, self.cam_y = c, r
+
+        for dy in range(min(h, self.lh - r)):
+            ly = dy + r
+            for dx in range(min(w, self.lw - c)):
+                lx = dx + c
+                ch = self.level[ly][lx]
+                if ch == '#':
+                    try:
+                        self.stdscr.addch(dy, dx, ' ', curses.A_REVERSE)
+                    except curses.error:
+                        pass
+
+        for (cx, cy) in self.coins:
+            sx = cx - c
+            sy = cy - r
+            if 0 <= sx < w and 0 <= sy < h:
+                try:
+                    if (self.frame // 8) % 2 == 0:
+                        self.stdscr.addch(sy, sx, '$', curses.color_pair(3) | curses.A_BOLD)
+                    else:
+                        self.stdscr.addch(sy, sx, 'o', curses.color_pair(3))
+                except curses.error:
+                    pass
+
+        for e in self.enemies:
+            if not e['alive']:
+                continue
+            sx = int(e['x']) - c
+            sy = int(e['y']) - r
+            if 0 <= sx < w and 0 <= sy < h:
+                try:
+                    self.stdscr.addch(sy, sx, 'E', curses.color_pair(2) | curses.A_BOLD)
+                except curses.error:
+                    pass
+
+        if self.flag_pos:
+            sx = self.flag_pos[0] - c
+            sy = self.flag_pos[1] - r
+            if 0 <= sx < w and 0 <= sy < h:
+                try:
+                    self.stdscr.addch(sy, sx, 'F', curses.color_pair(5) | curses.A_BOLD)
+                    if sx + 1 < w:
+                        self.stdscr.addch(sy, sx + 1, '|', curses.color_pair(5))
+                except curses.error:
+                    pass
+
+        for p in self.particles:
+            sx = int(p['x']) - c
+            sy = int(p['y']) - r
+            if 0 <= sx < w and 0 <= sy < h:
+                try:
+                    self.stdscr.addch(sy, sx, p['ch'], curses.color_pair(p['color']))
+                except curses.error:
+                    pass
+
+        psx = int(self.px) - c
+        psy = int(self.py) - r
+        if 0 <= psx < w and 0 <= psy < h:
+            try:
+                blink = curses.A_BLINK if self.respawn_timer > 0 and (self.frame // 4) % 2 == 0 else curses.A_NORMAL
+                self.stdscr.addch(psy, psx, '@', curses.color_pair(1) | curses.A_BOLD | blink)
+            except curses.error:
+                pass
+
+        self._draw_ui(h, w)
+
+        if self.won:
+            try:
+                msg = " YOU WIN! "
+                cx = max(0, w // 2 - len(msg) // 2)
+                cy = max(0, h // 2 - 1)
+                self.stdscr.addstr(cy, cx, msg, curses.A_REVERSE | curses.A_BOLD)
+                if cy + 1 < h:
+                    self.stdscr.addstr(cy + 1, max(0, w // 2 - 9), "Press any key to exit", curses.A_DIM)
+            except curses.error:
+                pass
+        elif self.game_over:
+            try:
+                msg = " GAME OVER "
+                cx = max(0, w // 2 - len(msg) // 2)
+                cy = max(0, h // 2 - 1)
+                self.stdscr.addstr(cy, cx, msg, curses.A_REVERSE | curses.A_BOLD)
+                if cy + 1 < h:
+                    self.stdscr.addstr(cy + 1, max(0, w // 2 - 9), "Press any key to exit", curses.A_DIM)
+            except curses.error:
+                pass
+
+    def _draw_ui(self, h, w):
+        try:
+            info = f" SCORE: {self.score}  LIVES: {'♥' * self.lives}{'♡' * (3 - self.lives)}  "
+            self.stdscr.addstr(0, 0, info[:w], curses.A_REVERSE)
+            if h > 1:
+                ctrl = "  arrows move  SPACE/UP jump  Q quit"
+                self.stdscr.addstr(h - 1, 0, ctrl[:w], curses.A_DIM)
+        except curses.error:
+            pass
+
+
+    def run(self):
+        curses.curs_set(0)
+        self.stdscr.nodelay(1)
+        self.stdscr.keypad(True)
+        curses.start_color()
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_GREEN, -1)
+        curses.init_pair(2, curses.COLOR_RED, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+        curses.init_pair(4, curses.COLOR_WHITE, -1)
+        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+
+        self._draw_title()
+
+        while not (self.game_over or self.won):
+            keys = []
+            for _ in range(10):
+                k = self.stdscr.getch()
+                if k == ord('q'):
+                    return
+                if k == curses.KEY_RESIZE:
+                    h, w = self.stdscr.getmaxyx()
+                    self.screen_h, self.screen_w = h, w
+                elif k != -1:
+                    keys.append(k)
+            self.update(keys)
+            self.draw()
+            self.stdscr.refresh()
+            time.sleep(0.016)
+
+        self.draw()
+        self.stdscr.refresh()
+        self.stdscr.nodelay(0)
+        self.stdscr.getch()
+
+    def _draw_title(self):
+        self.stdscr.erase()
+        h, w = self.stdscr.getmaxyx()
+        title = " TERMINAL PLATFORMER "
+        cx = w // 2 - len(title) // 2
+        self.stdscr.addstr(h // 2 - 4, cx, title, curses.A_REVERSE | curses.A_BOLD)
+        lines = [
+            "",
+            "  @ is you    $ are coins    E are enemies",
+            "  Reach the flag  F  to win!",
+            "",
+            "  ← →  Move",
+            "  ↑/SPACE  Jump",
+            "  Stomp enemies from above!",
+            "",
+            "  Press any key to start..."
+        ]
+        for i, line in enumerate(lines):
+            self.stdscr.addstr(h // 2 - 2 + i, w // 2 - len(line) // 2, line)
+        self.stdscr.refresh()
+        self.stdscr.nodelay(0)
+        self.stdscr.getch()
+        self.stdscr.nodelay(1)
+
+
+def main(stdscr):
+    game = Game(stdscr)
+    game.run()
+
+
+if __name__ == '__main__':
+    try:
+        curses.wrapper(main)
+    except KeyboardInterrupt:
+        pass

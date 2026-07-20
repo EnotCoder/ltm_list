@@ -26,7 +26,7 @@ def main(stdscr):
         dx, dy = 0, 1
         food = None
         score = 0
-        speed = 120
+        speed = 200
         game_over = False
         paused = False
 

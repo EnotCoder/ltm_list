@@ -41,15 +41,17 @@ def translate(text):
         if isinstance(part, list) and part[0]:
             translation += part[0]
 
-    transcription = ""
+    src_trans = ""
+    dst_trans = ""
     if len(data) > 0 and len(data[0]) > 1:
         meta = data[0][1]
-        if isinstance(meta, list) and len(meta) > 2 and meta[2]:
-            transcription = meta[2]
-        elif isinstance(meta, list) and len(meta) > 3 and meta[3]:
-            transcription = meta[3]
+        if isinstance(meta, list):
+            if len(meta) > 3 and meta[3]:
+                src_trans = meta[3]
+            if len(meta) > 2 and meta[2]:
+                dst_trans = meta[2]
 
-    return translation, transcription, dst
+    return translation, src_trans, dst_trans, dst
 
 
 def main():
@@ -60,21 +62,22 @@ def main():
         sys.exit(1)
 
     text = " ".join(sys.argv[1:])
-    translation, transcription, lang = translate(text)
+    translation, src_trans, dst_trans, lang = translate(text)
 
-    lang_name = "Английский" if lang == "en" else "Русский"
+    lang_from = "Английский" if lang == "ru" else "Русский"
+    lang_to = "Русский" if lang == "ru" else "Английский"
 
-    print(f"\033[1mПеревод ({lang_name}):\033[0m")
+    print(f"\033[1m{lang_from} → {lang_to}\033[0m")
     print(f"  {translation}")
 
-    if transcription:
-        print(f"\033[1mТранскрипция:\033[0m")
-        print(f"  [{transcription}]")
-
-    if lang == "ru":
-        print()
-        print(f"\033[1mОригинал (English):\033[0m")
-        print(f"  {text}")
+    if dst_trans:
+        print(f"\033[1mТранскрипция\033[0m")
+        line = ""
+        if src_trans:
+            line = f"  [{src_trans}]"
+        if dst_trans and dst_trans != src_trans:
+            line += f"  [{dst_trans}]"
+        print(line)
 
 
 if __name__ == "__main__":

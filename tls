@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+import sys
+import requests
+import urllib.parse
+import re
+
+URL = "https://translate.googleapis.com/translate_a/single"
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+
+def detect_lang(text):
+    latin = 0
+    for ch in text[:20]:
+        if 'a' <= ch.lower() <= 'z':
+            latin += 1
+    return "en" if latin > len(text[:20]) // 2 else "ru"
+
+
+def translate(text):
+    src = detect_lang(text)
+    dst = "ru" if src == "en" else "en"
+
+    params = {
+        "client": "gtx",
+        "sl": src,
+        "tl": dst,
+        "dt": ["t", "rm"],
+        "q": text,
+    }
+
+    try:
+        resp = requests.get(URL, params=params, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        print(f"Ошибка запроса: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    translation = ""
+    for part in data[0]:
+        if isinstance(part, list) and part[0]:
+            translation += part[0]
+
+    transcription = ""
+    if len(data) > 2 and data[2]:
+        transcription = data[2]
+
+    if not transcription and len(data) > 1 and data[1]:
+        parts = data[1]
+        if isinstance(parts, list):
+            for p in parts:
+                if isinstance(p, list) and len(p) > 2 and p[2]:
+                    transcription = p[2]
+                    break
+
+    return translation, transcription, dst
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Использование: tls <текст>")
+        print("  tls hello world")
+        print('  tls "привет мир"')
+        sys.exit(1)
+
+    text = " ".join(sys.argv[1:])
+    translation, transcription, lang = translate(text)
+
+    lang_name = "Английский" if lang == "en" else "Русский"
+
+    print(f"\033[1mПеревод ({lang_name}):\033[0m")
+    print(f"  {translation}")
+
+    if transcription:
+        print(f"\033[1mТранскрипция:\033[0m")
+        print(f"  [{transcription}]")
+
+    if lang == "ru":
+        print()
+        print(f"\033[1mОригинал (English):\033[0m")
+        print(f"  {text}")
+
+
+if __name__ == "__main__":
+    main()

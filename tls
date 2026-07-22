@@ -42,16 +42,12 @@ def translate(text):
             translation += part[0]
 
     transcription = ""
-    if len(data) > 2 and data[2]:
-        transcription = data[2]
-
-    if not transcription and len(data) > 1 and data[1]:
-        parts = data[1]
-        if isinstance(parts, list):
-            for p in parts:
-                if isinstance(p, list) and len(p) > 2 and p[2]:
-                    transcription = p[2]
-                    break
+    if len(data) > 0 and len(data[0]) > 1:
+        meta = data[0][1]
+        if isinstance(meta, list) and len(meta) > 2 and meta[2]:
+            transcription = meta[2]
+        elif isinstance(meta, list) and len(meta) > 3 and meta[3]:
+            transcription = meta[3]
 
     return translation, transcription, dst
 

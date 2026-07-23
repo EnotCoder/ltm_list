@@ -63,7 +63,10 @@ def main(stdscr):
             if paused:
                 stdscr.addstr(play_h // 2, play_w // 2 - 4, "PAUSED", curses.color_pair(3))
 
-            key = stdscr.getch()
+            try:
+                key = stdscr.getch()
+            except KeyboardInterrupt:
+                return
 
             if key == ord('q'):
                 return
@@ -72,6 +75,8 @@ def main(stdscr):
                 continue
             if paused:
                 continue
+
+            ody, odx = dy, dx
 
             if key == curses.KEY_UP:
                 dy, dx = -1, 0
@@ -85,6 +90,9 @@ def main(stdscr):
                 dy, dx = DIRS[key]
             elif key in DIRS_VI:
                 dy, dx = DIRS_VI[key]
+
+            if len(snake) > 1 and (dy, dx) == (-ody, -odx):
+                dy, dx = ody, odx
 
             head = snake[0]
             ny, nx = head[0] + dy, head[1] + dx

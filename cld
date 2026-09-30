@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+import os
+import shutil
+import sys
+from pathlib import Path
+
+version = 1.0
+
+
+def human_size(num: int) -> str:
+    size = float(num)
+    for unit in ("Б", "КБ", "МБ", "ГБ", "ТБ"):
+        if size < 1024 or unit == "ТБ":
+            return f"{size:.0f} {unit}" if unit == "Б" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} ТБ"
+
+
+def xdg_dir(key: str, fallback: str) -> Path:
+    """Ищет реальное имя директории в user-dirs.dirs (для локализованных имён)."""
+    config = Path.home() / ".config" / "user-dirs.dirs"
+    if config.is_file():
+        try:
+            for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if not line.startswith("XDG_") or "=" not in line:
+                    continue
+                name, value = line.split("=", 1)
+                if name == f"XDG_{key.upper()}_DIR" and value.startswith('"$HOME/'):
+                    return Path.home() / value[7:].rstrip('"')
+        except OSError:
+            pass
+    return Path.home() / fallback
+
+
+def find_screenshots() -> Path | None:
+    candidates = [
+        xdg_dir("pictures", "Pictures") / "Screenshots",
+        xdg_dir("pictures", "Pictures") / "Снимки экрана",
+        Path.home() / "Pictures" / "Screenshots",
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return path
+    return None
+
+
+def collect(directory: Path) -> list[Path]:
+    """Все файлы внутри директории, рекурсивно."""
+    files: list[Path] = []
+    for root, dirs, names in os.walk(directory):
+        dirs.sort()
+        for name in sorted(names):
+            files.append(Path(root) / name)
+    return files
+
+
+def dir_size(files: list[Path]) -> int:
+    total = 0
+    for path in files:
+        try:
+            total += path.stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+def remove_file(path: Path) -> bool:
+    try:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def ask_confirm(prompt: str) -> bool:
+    try:
+        answer = input(prompt).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    return answer in ("y", "yes", "д", "да")
+
+
+def main():
+    args = sys.argv[1:]
+
+    if args and args[0] in ("-v", "--version"):
+        print(version)
+        sys.exit(0)
+
+    assume_yes = False
+    dry_run = False
+    keep_dirs = True
+
+    for arg in args:
+        if arg in ("-y", "--yes"):
+            assume_yes = True
+        elif arg in ("-n", "--dry-run"):
+            dry_run = True
+        elif arg in ("--purge-dirs",):
+            keep_dirs = False
+        elif arg in ("-h", "--help"):
+            print("Использование:")
+            print("  cld                        # удалить скриншоты и файлы из ~/Downloads")
+            print("  cld -n                     # только показать, что будет удалено")
+            print("  cld -y                     # без подтверждения")
+            print("  cld --purge-dirs           # удалить и пустые поддиректории")
+            sys.exit(0)
+        else:
+            print(f"Неизвестный аргумент: {arg}", file=sys.stderr)
+            sys.exit(1)
+
+    targets: list[tuple[str, Path]] = []
+
+    screenshots = find_screenshots()
+    if screenshots is None:
+        print("Директория со скриншотами не найдена, пропускаю", file=sys.stderr)
+    else:
+        targets.append(("Скриншоты", screenshots))
+
+    downloads = xdg_dir("download", "Downloads")
+    if downloads.is_dir():
+        targets.append(("Загрузки", downloads))
+    else:
+        print(f"Директория не найдена, пропускаю: {downloads}", file=sys.stderr)
+
+    if not targets:
+        print("Нечего удалять.")
+        sys.exit(0)
+
+    print()
+    plan: list[tuple[str, list[Path]]] = []
+    for title, directory in targets:
+        files = collect(directory)
+        plan.append((title, files))
+        print(f"{title}: {directory}")
+        print(f"  файлов: {len(files)}   размер: {human_size(dir_size(files))}")
+
+    total_files = sum(len(files) for _, files in plan)
+    total_size = sum(dir_size(files) for _, files in plan)
+    print()
+    print(f"Всего к удалению: {total_files} файл(ов), {human_size(total_size)}")
+
+    if dry_run:
+        print()
+        for title, files in plan:
+            for path in files:
+                print(f"  {title}: {path}")
+        print("Ничего не удалено (--dry-run).")
+        sys.exit(0)
+
+    print()
+    if not assume_yes and not ask_confirm("Удалить безвозвратно? (y/N): "):
+        print("Отменено.")
+        sys.exit(0)
+
+    print()
+    for (title, files), (_, directory) in zip(plan, targets):
+        failed = 0
+        for path in files:
+            if not remove_file(path):
+                failed += 1
+                print(f"  не удалось: {path}", file=sys.stderr)
+
+        removed_dirs = 0
+        if not keep_dirs:
+            for root, dirs, names in os.walk(directory, topdown=False):
+                for name in dirs:
+                    try:
+                        os.rmdir(Path(root) / name)
+                        removed_dirs += 1
+                    except OSError:
+                        pass
+
+        line = f"{title}: удалено {len(files) - failed} из {len(files)}"
+        if removed_dirs:
+            line += f", пустых папок: {removed_dirs}"
+        print(line)
+
+    print("Готово, освобождено:", human_size(total_size))
+
+
+if __name__ == "__main__":
+    main()

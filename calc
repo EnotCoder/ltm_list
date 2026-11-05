@@ -14,6 +14,11 @@ BUTTONS = {
 
 MAX_LEN = 9
 
+expr = ""
+chose_mode = False
+cursor = 1
+mode_idx = 0
+
 
 def getch():
     fd = sys.stdin.fileno()
@@ -78,11 +83,11 @@ def eval_expr(expr: str) -> str:
     return str(result)
 
 
-def draw(expr: str, cursor: int, mode_idx: int):
+def draw():
     os.system("clear" if os.name == "posix" else "cls")
     print(" ================")
     pad = MAX_LEN - len(expr)
-    print(f" |{expr}{' ' * pad}|V:02|")
+    print(f" |{expr}{' ' * pad}|V:03|")
     print(" ================")
     for row in range(4):
         print(" | ", end="")
@@ -93,7 +98,7 @@ def draw(expr: str, cursor: int, mode_idx: int):
                 print(f"\033[31m{ch}\033[0m ", end="")
             else:
                 print(f"{ch} ", end="")
-        mode_labels = {0: " def", 1: "exit"}
+        mode_labels = {0: "calc", 1: "exit"}
         label = mode_labels.get(row, "    ")
         if row == mode_idx:
             print(f"|\033[31m{label}\033[0m|")
@@ -102,70 +107,96 @@ def draw(expr: str, cursor: int, mode_idx: int):
     print(" ================")
 
 
-def input_calc(cursor: list, expr: list) -> bool:
-    """Returns False to quit."""
+# ====== Input calc ======
+EXIT = "\x03"    # Ctrl+C
+EXIT_MODE = "q"  # Q
+ENTER = "\r"     # Enter
+
+UP = "\x1b[A"    # up
+DOWN = "\x1b[B"  # down
+RIGHT = "\x1b[C" # right
+LEFT = "\x1b[D"  # left
+
+def input_calc() -> str:
+    global expr, cursor, chose_mode
+
     key = getch()
-    if key == "q":
-        return False
-    if key == "\x1b[A":  # up
-        cursor[0] = max(1, cursor[0] - 4)
-    elif key == "\x1b[B":  # down
-        cursor[0] = min(16, cursor[0] + 4)
-    elif key == "\x1b[C":  # right
-        cursor[0] = min(16, cursor[0] + 1)
-    elif key == "\x1b[D":  # left
-        cursor[0] = max(1, cursor[0] - 1)
-    elif key == "\r":
-        ch = BUTTONS[cursor[0]]
+
+    if key == EXIT:
+        return "exit"
+
+    if key == UP:
+        cursor = max(1, cursor - 4)
+    elif key == DOWN:
+        cursor = min(16, cursor + 4)
+    elif key == RIGHT:
+        cursor = min(16, cursor + 1)
+    elif key == LEFT:
+        cursor = max(1, cursor - 1)
+
+    elif key == ENTER:
+        ch = BUTTONS[cursor]
         if ch == "x":
-            expr[0] = ""
+            expr = ""
         elif ch in ("*", "/", "+", "-"):
-            if len(expr[0]) == 0 or len(expr[0]) >= 8:
+            if len(expr) == 0 or len(expr) >= 8:
                 pass
-            elif expr[0] and expr[0][-1] in ("*", "/", "+", "-"):
+            elif expr and expr[0][-1] in ("*", "/", "+", "-"):
                 pass
             else:
-                expr[0] += ch
+                expr += ch
         elif ch == "=":
-            expr[0] = eval_expr(expr[0])
+            expr = eval_expr(expr)
         else:
-            if len(expr[0]) < MAX_LEN - 1:
-                expr[0] += ch
-    elif key == "\x03":  # Ctrl+C
+            if len(expr) < MAX_LEN - 1:
+                expr += ch
+
+    elif key == EXIT_MODE:
         return "mode"
-    return True
 
+    return ""
 
-def input_mode(program_state: list) -> bool:
+def input_exit() -> str:
+    return "exit"
+
+def input_mode() -> str:
+    global mode_idx, chose_mode
+
     key = getch()
-    if key == "q":
-        return False
-    if key == "\x1b[B":
-        program_state[0] = min(1, program_state[0] + 1)
-    elif key == "\x1b[A":
-        program_state[0] = max(0, program_state[0] - 1)
-    elif key == "\r":
-        return program_state[0]
-    return True
+    if key == EXIT:
+        return "exit"
+
+    if key == UP:
+        mode_idx = max(0, mode_idx - 1)
+    elif key == DOWN:
+        mode_idx = min(1, mode_idx + 1)
+
+    if key == ENTER:
+        chose_mode = False
+
+    return ""
 
 
 def main():
-    expr = [""]
-    cursor = [1]
-    mode_idx = [0]
+    global mode_idx, chose_mode
 
     while True:
-        draw(expr[0], cursor[0], mode_idx[0])
+        draw()
 
-        if mode_idx[0] == 0:
-            result = input_calc(cursor, expr)
+        if chose_mode == False:
+            match mode_idx:
+                case 0:
+                    result = input_calc()
+                case 1:
+                    result = input_exit()
         else:
-            result = input_mode(mode_idx)
+            result = input_mode()
 
-        if result is False:
-            break
-        if result == "mode":
-            mode_idx[0] = 1
+        match result:
+            case "exit":
+                break
+            case "mode":
+                chose_mode = True
 
 
 if __name__ == "__main__":

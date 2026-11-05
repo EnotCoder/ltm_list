@@ -100,7 +100,7 @@ Calculator with a pseudo-graphic interface and keyboard support.
 
 ```
  ================
- |            |V:02|
+ |         |V:03|
  ================
  | 1 2 3 * | def|
  | 4 5 6 / |exit|
@@ -112,8 +112,6 @@ Calculator with a pseudo-graphic interface and keyboard support.
 **Controls:**
 - Arrows — button navigation
 - Enter — click button
-- `x` — clear input
-- `=` — calculate expression
 - `Ctrl+C` — exit menu
 - `q` — exit
 

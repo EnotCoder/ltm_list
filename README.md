@@ -102,7 +102,7 @@ Calculator with a pseudo-graphic interface and keyboard support.
  ================
  |         |V:03|
  ================
- | 1 2 3 * | def|
+ | 1 2 3 * |calc|
  | 4 5 6 / |exit|
  | 7 8 9 + |    |
  | x 0 = - |    |

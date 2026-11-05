@@ -2,101 +2,101 @@
 
 ![vfx preview](img/vfx.png)
 
-Набор полезных CLI-утилит для повседневных задач.
+A collection of useful CLI utilities for everyday tasks.
 
-## Установка
+## Installation
 
 ```bash
 ./install.sh
 ```
 
-После установки все программы будут доступны из любой директории.
+After installation, all programs will be available from any directory.
 
-## Программы
+## Programs
 
-### `dvi` — загрузка видео и изображений
+### `dvi` — download video and images
 
-Скачивает видео с YouTube, VK, Pinterest, TikTok, Instagram и 1800+ других площадок. Если видео на странице нет — автоматически скачивает изображение.
+Downloads video from YouTube, VK, Pinterest, TikTok, Instagram, and 1800+ other platforms. If no video is found on the page, it automatically downloads the image.
 
 ```bash
-dvi <ссылка>                          # лучшее качество
-dvi -q audio <ссылка>                 # только аудио (MP3)
-dvi -q worst <ссылка>                 # худшее качество
-dvi <ссылка1> <ссылка2>               # несколько ссылок
+dvi <link>                          # best quality
+dvi -q audio <link>                 # audio only (MP3)
+dvi -q worst <link>                 # worst quality
+dvi <link1> <link2>               # multiple links
 ```
 
-Файлы сохраняются в `~/Videos`.
+Files are saved in `~/Videos`.
 
-### `dins` — поиск файла в директории
+### `dins` — find file in directory
 
-Рекурсивно ищет файл по имени, начиная с текущей папки.
+Recursively searches for a file by name, starting from the current folder.
 
 ```bash
-dins <file_name>                      # Find and show the way
+dins <file_name>                      # Find and show the path
 dins                                  # Show welcome page
 ```
 
-### `gh` — открыть GitHub в браузере
+### `gh` — open GitHub in browser
 
 ```bash
 gh                      # github.com
-gh EnotCoder            # профиль пользователя
-gh EnotCoder ltm_list   # репозиторий
-gh EnotCoder/ltm_list   # репозиторий
+gh EnotCoder            # user profile
+gh EnotCoder ltm_list   # repository
+gh EnotCoder/ltm_list   # repository
 ```
 
-### `snk` — змейка
+### `snk` — snake
 
-Классическая игра Snake в терминале.
+Classic Snake game in the terminal.
 
 ```bash
 snk
 ```
 
-**Управление:**
-- `WASD` / `↑←↓→` / `VI`-клавиши (`HJKL`) — движение
-- `p` — пауза
-- `q` — выход
-- После проигрыша: `r` — рестарт, `q` — выход
+**Controls:**
+- `WASD` / `↑←↓→` / `VI`-keys (`HJKL`) — movement
+- `p` — pause
+- `q` — exit
+- After game over: `r` — restart, `q` — exit
 
-### `tls` — переводчик
+### `tls` — translator
 
-Переводит текст между английским и русским с транскрипцией. Определяет язык автоматически.
+Translates text between English and Russian with transcription. Detects the language automatically.
 
 ```bash
 tls hello world
-tls "привет мир"
+tls "hello world"
 tls "How are you?"
 ```
 
-### `vfx` — визуальные эффекты в терминале
+### `vfx` — visual effects in terminal
 
-Красивые анимации в терминале на подобии `cmatrix`.
-
-```bash
-vfx                   # матрица (по умолчанию)
-vfx fire              # огонь
-vfx tux               # летающая надпись LINUX
-```
-
-Любая клавиша — выход.
-
-### `imgsh` — работа с изображениями
-
-Конвертирует форматы, меняет размер, переводит в чёрно-белый.
+Beautiful animations in the terminal similar to `cmatrix`.
 
 ```bash
-imgsh photo.png photo.jpg                         # конвертация
-imgsh photo.jpg photo.png --bw                    # чёрно-белое
-imgsh photo.png photo.jpg --resize 512x512        # изменение размера
-imgsh photo.png photo.jpg --bw --resize 1024x768  # вместе
+vfx                   # matrix (default)
+vfx fire              # fire
+vfx tux               # flying LINUX text
 ```
 
-Поддерживаемые форматы: JPG, PNG, WebP, BMP, GIF, TIFF, ICO.
+Any key — exit.
 
-### `calc` — калькулятор в терминале
+### `imgsh` — image processing
 
-Калькулятор с псевдографическим интерфейсом и поддержкой клавиатуры.
+Converts formats, resizes, and turns to black and white.
+
+```bash
+imgsh photo.png photo.jpg                         # conversion
+imgsh photo.jpg photo.png --bw                    # black and white
+imgsh photo.png photo.jpg --resize 512x512        # resizing
+imgsh photo.png photo.jpg --bw --resize 1024x768  # both
+```
+
+Supported formats: JPG, PNG, WebP, BMP, GIF, TIFF, ICO.
+
+### `calc` — terminal calculator
+
+Calculator with a pseudo-graphic interface and keyboard support.
 
 ```
  ================
@@ -109,46 +109,46 @@ imgsh photo.png photo.jpg --bw --resize 1024x768  # вместе
  ================
 ```
 
-**Управление:**
-- Стрелки — навигация по кнопкам
-- Enter — нажать кнопку
-- `x` — очистить ввод
-- `=` — вычислить выражение
-- `Ctrl+C` — меню выхода
-- `q` — выход
+**Controls:**
+- Arrows — button navigation
+- Enter — click button
+- `x` — clear input
+- `=` — calculate expression
+- `Ctrl+C` — exit menu
+- `q` — exit
 
-### `vol` — терминальный аудиоплеер
+### `vol` — terminal audio player
 
-Музыкальный плеер прямо в терминале. Сканирует директорию рекурсивно, поддерживает все популярные форматы (mp3, flac, ogg, m4a, wav, opus и др.).
+Music player right in your terminal. Scans directory recursively, supports all popular formats (mp3, flac, ogg, m4a, wav, opus, etc.).
 
 ```bash
 vol ~/Music
 vol track.mp3
 ```
 
-**Управление:**
-- `Space` — пауза/продолжить
-- `←` / `→` — перемотка -/+5 секунд
-- `↑` / `↓` — громкость
-- `n` / `p` — следующий/предыдущий трек
-- `q` — выход
+**Controls:**
+- `Space` — pause/resume
+- `←` / `→` — seek -/+5 seconds
+- `↑` / `↓` — volume
+- `n` / `p` — next/previous track
+- `q` — exit
 
-Зависимости: `mplayer`, `ffprobe` (из пакета `ffmpeg`).
+Dependencies: `mplayer`, `ffprobe` (from `ffmpeg` package).
 
-### `cld` — очистка скриншотов и загрузок
+### `cld` — clear screenshots and downloads
 
-Удаляет все файлы из `~/Pictures/Screenshots` и `~/Downloads` (рекурсивно, вместе с подпапками). Перед удалением показывает количество файлов и занимаемый размер, спрашивает подтверждение.
+Deletes all files from `~/Pictures/Screenshots` and `~/Downloads` (recursively, including subfolders). Before deletion, it shows the number of files and total size, asking for confirmation.
 
 ```bash
-cld                        # удалить с подтверждением
-cld -n                     # только показать, что будет удалено
-cld -y                     # без подтверждения
-cld --purge-dirs           # удалить и пустые поддиректории
+cld                        # delete with confirmation
+cld -n                     # only show what will be deleted
+cld -y                     # without confirmation
+cld --purge-dirs           # delete empty subdirectories as well
 ```
 
-Удаление необратимое, мимо корзины. Директории определяются через `~/.config/user-dirs.dirs`, так что работает и с локализованными именами (`Загрузки`, `Снимки экрана`).
+Deletion is permanent, bypassing the trash. Directories are determined via `~/.config/user-dirs.dirs`, so it works with localized names.
 
-## Удаление
+## Uninstallation
 
 ```bash
 ./uninstall.sh

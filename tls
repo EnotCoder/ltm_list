@@ -33,13 +33,13 @@ def translate(text):
         resp.raise_for_status()
         data = resp.json()
     except requests.ConnectionError:
-        print("Нет подключения к интернету", file=sys.stderr)
+        print("No internet connection", file=sys.stderr)
         sys.exit(1)
     except requests.Timeout:
-        print("Сервер не отвечает (тайм-аут)", file=sys.stderr)
+        print("Server not responding (timeout)", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"Ошибка: {e}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     translation = ""
@@ -62,22 +62,22 @@ def translate(text):
 
 def main():
     if len(sys.argv) < 2:
-        print("Использование: tls <текст>")
+        print("Usage: tls <text>")
         print("  tls hello world")
-        print('  tls "привет мир"')
+        print('  tls "hello world"')
         sys.exit(1)
 
     text = " ".join(sys.argv[1:])
     translation, src_trans, dst_trans, lang = translate(text)
 
-    lang_from = "Английский" if lang == "ru" else "Русский"
-    lang_to = "Русский" if lang == "ru" else "Английский"
+    lang_from = "English" if lang == "ru" else "Russian"
+    lang_to = "Russian" if lang == "ru" else "English"
 
     print(f"\033[1m{lang_from} → {lang_to}\033[0m")
     print(f"  {translation}")
 
     if dst_trans:
-        print(f"\033[1mТранскрипция\033[0m")
+        print(f"\033[1mTranscription\033[0m")
         line = ""
         if src_trans:
             line = f"  [{src_trans}]"

@@ -21,7 +21,7 @@ def download_image(url):
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
     except Exception as e:
-        print(f"Не удалось загрузить страницу: {e}", file=sys.stderr)
+        print(f"Failed to load page: {e}", file=sys.stderr)
         return False
 
     html = resp.text
@@ -50,7 +50,7 @@ def download_image(url):
             image_url = m.group(1)
 
     if not image_url:
-        print("Не удалось найти изображение на странице", file=sys.stderr)
+        print("Could not find image on page", file=sys.stderr)
         return False
 
     if image_url.startswith("//"):
@@ -74,10 +74,10 @@ def download_image(url):
         img_resp.raise_for_status()
         with open(dest, "wb") as f:
             f.write(img_resp.content)
-        print(f"Изображение сохранено: {dest}")
+        print(f"Image saved: {dest}")
         return True
     except Exception as e:
-        print(f"Ошибка при скачивании изображения: {e}", file=sys.stderr)
+        print(f"Error downloading image: {e}", file=sys.stderr)
         return False
 
 
@@ -95,33 +95,33 @@ def download(url, quality=None):
 
     cmd.append(url)
 
-    print(f"Скачиваю: {url}")
+    print(f"Downloading: {url}")
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:
-        print("Готово! Видео сохранено в ~/Videos")
+        print("Done! Video saved in ~/Videos")
         return
 
     if "No video formats found" in result.stderr or "Requested format is not available" in result.stderr:
-        print("Видео не найдено, пробую скачать как изображение...")
+        print("Video not found, trying to download as image...")
         if download_image(url):
             return
 
     print(result.stderr, file=sys.stderr)
-    print("Ошибка при скачивании", file=sys.stderr)
+    print("Download error", file=sys.stderr)
     sys.exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Скачивание видео (или изображений) с YouTube, VK, Pinterest и др."
+        description="Download video (or images) from YouTube, VK, Pinterest, etc."
     )
-    parser.add_argument("url", nargs="+", help="Ссылка")
+    parser.add_argument("url", nargs="+", help="Link")
     parser.add_argument(
         "-q", "--quality",
         choices=["best", "worst", "audio"],
         default="best",
-        help="Качество видео (по умолчанию best)",
+        help="Video quality (default: best)",
     )
     args = parser.parse_args()
 

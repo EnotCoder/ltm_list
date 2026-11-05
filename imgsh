@@ -23,13 +23,13 @@ def resize(img: Image.Image, width: int, height: int) -> Image.Image:
 
 def main():
     if len(sys.argv) < 3:
-        print("Использование:")
-        print("  imgsh <входной_файл> <выходной_файл>              # конвертация формата")
-        print("  imgsh <входной_файл> <выходной_файл> --bw          # чёрно-белое")
-        print("  imgsh <входной_файл> <выходной_файл> --resize WxH  # изменение размера")
-        print("  imgsh <входной_файл> <выходной_файл> --bw --resize WxH")
+        print("Usage:")
+        print("  imgsh <input_file> <output_file>              # format conversion")
+        print("  imgsh <input_file> <output_file> --bw          # black and white")
+        print("  imgsh <input_file> <output_file> --resize WxH  # resize")
+        print("  imgsh <input_file> <output_file> --bw --resize WxH")
         print()
-        print("Примеры:")
+        print("Examples:")
         print("  imgsh photo.png photo.jpg")
         print("  imgsh photo.jpg photo.png --bw")
         print("  imgsh photo.png photo.jpg --resize 512x512")
@@ -40,14 +40,14 @@ def main():
     flags = sys.argv[3:]
 
     if not os.path.isfile(src):
-        print(f"Файл не найден: {src}", file=sys.stderr)
+        print(f"File not found: {src}", file=sys.stderr)
         sys.exit(1)
 
     ext_in = which_ext(src)
     ext_out = which_ext(dst)
 
     if ext_out not in FORMATS:
-        print(f"Неподдерживаемый формат: {ext_out}", file=sys.stderr)
+        print(f"Unsupported format: {ext_out}", file=sys.stderr)
         sys.exit(1)
 
     img = Image.open(src)
@@ -71,7 +71,7 @@ def main():
         try:
             w, h = map(int, do_resize.lower().split("x"))
         except ValueError:
-            print("Неверный формат размера. Используй WxH, например 512x512", file=sys.stderr)
+            print("Invalid size format. Use WxH, e.g., 512x512", file=sys.stderr)
             sys.exit(1)
         img = resize(img, w, h)
 
@@ -79,7 +79,7 @@ def main():
         img = img.convert("RGB")
     img.save(dst, format=FORMATS[ext_out])
 
-    print(f"Готово: {src} -> {dst}")
+    print(f"Done: {src} -> {dst}")
 
 
 if __name__ == "__main__":

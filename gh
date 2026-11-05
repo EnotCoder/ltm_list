@@ -45,7 +45,7 @@ def commits_today(username):
 def main():
     if len(sys.argv) == 1:
         webbrowser.open(BASE)
-        print(f"Открыто: {BASE}")
+        print(f"Opened: {BASE}")
         return
 
     args = sys.argv[1:]
@@ -54,13 +54,13 @@ def main():
         idx = args.index("-s")
         user = args[idx - 1]
         if user.startswith("-"):
-            print("Использование: gh <user> -s")
+            print("Usage: gh <user> -s")
             sys.exit(1)
         n = commits_today(user)
         if n is not None:
-            print(f"{user} — {n} коммитов сегодня")
+            print(f"{user} — {n} commits today")
         else:
-            print(f"Не удалось получить данные для {user}", file=sys.stderr)
+            print(f"Failed to get data for {user}", file=sys.stderr)
             sys.exit(1)
         return
 
@@ -73,16 +73,16 @@ def main():
     elif len(args) == 1:
         url = f"{BASE}/{args[0]}"
     else:
-        print("Использование:")
+        print("Usage:")
         print("  gh                      # github.com")
-        print("  gh <user>              # профиль пользователя")
-        print("  gh <user> <repo>       # репозиторий")
-        print("  gh <user/repo>         # репозиторий")
-        print("  gh <user> -s           # коммитов сегодня")
+        print("  gh <user>              # user profile")
+        print("  gh <user> <repo>       # repository")
+        print("  gh <user/repo>         # repository")
+        print("  gh <user> -s           # commits today")
         sys.exit(1)
 
     webbrowser.open(url)
-    print(f"Открыто: {url}")
+    print(f"Opened: {url}")
 
 
 if __name__ == "__main__":

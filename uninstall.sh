@@ -8,8 +8,8 @@ for name in "${SCRIPTS[@]}"; do
 
     if [ -f "$dest" ]; then
         sudo rm "$dest"
-        echo "$name удалён"
+        echo "$name removed"
     else
-        echo "$name не найден в /usr/local/bin" >&2
+        echo "$name not found in /usr/local/bin" >&2
     fi
 done

@@ -225,12 +225,12 @@ def draw(stdscr, files, player, filename):
         stdscr.addstr(3, 2 + min(cols - 18, 40) + 1, "  --:-- / --:--")
 
     icon = "▶" if player.paused else "⏸"
-    ctrl = f"  ⏮  {icon}  ⏭     Громкость: {player.volume:3d}%"
+    ctrl = f"  ⏮  {icon}  ⏭     Volume: {player.volume:3d}%"
     stdscr.addstr(5, 0, ctrl[:cols])
     if player.paused:
-        stdscr.addstr(5, cols - 10, "[ПАУЗА]", curses.A_BOLD)
+        stdscr.addstr(5, cols - 10, "[PAUSE]", curses.A_BOLD)
 
-    help_txt = "Space: пауза  ←→: -/+5с  ↑↓: громкость  n/p: трек  q: выход"
+    help_txt = "Space: pause  ←→: -/+5s  ↑↓: volume  n/p: track  q: exit"
     stdscr.addstr(h - 1, 0, help_txt[:cols], curses.A_DIM)
 
 
@@ -238,7 +238,7 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "."
     files = find_music(path)
     if not files:
-        print(f"Нет музыкальных файлов: {path}", file=sys.stderr)
+        print(f"No music files found: {path}", file=sys.stderr)
         sys.exit(1)
 
     player = Player(files)

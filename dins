@@ -1,15 +1,31 @@
 #!/usr/bin/env python3
 import os
 import sys
-import subprocess
 
-version = 1.1
+version = "1.2.1"
+logo = "DINS <--"
 
+def print_welcome_page():
+    print(logo)
+    print("Version: ", version)
+
+def print_code_start(code: str, path: str, line: str):
+    code_line = f"|{code} {path}"
+    num_space = (len(line) - len(code_line)) - 3
+    print(code_line, " " * num_space, "|")
 
 def print_file_found(path: str):
     line = f"| file is - {path} |"
+
     print("-" * len(line))
     print(line)
+    print("-" * len(line))
+
+    print_code_start("nano", path, line)
+    print_code_start("nvim", path, line)
+    print_code_start("code", path, line)
+    print_code_start("subl", path, line)
+
     print("-" * len(line))
 
 
@@ -41,25 +57,21 @@ def search(filename: str, start_path: str = ".") -> str | None:
 
 
 def main():
-    if len(sys.argv) > 3:
-        print("manu argv")
+    if len(sys.argv) > 2:
+        print("Sorry, You have too many arguments\n:(")
         sys.exit(1)
     elif len(sys.argv) < 2:
-        print(version)
+        print_welcome_page()
         sys.exit()
 
     filename = sys.argv[1]
-    command = sys.argv[2] if len(sys.argv) == 3 else None
 
     found = search(filename)
     if found is None:
         print_file_not_found()
         sys.exit(1)
 
-    if command:
-        subprocess.run([command, found])
-    else:
-        print_file_found(found)
+    print_file_found(found)
 
 
 if __name__ == "__main__":

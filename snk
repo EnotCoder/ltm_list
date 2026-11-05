@@ -2,8 +2,43 @@
 import curses
 import random
 
-DIRS = {119: (-1, 0), 115: (1, 0), 97: (0, -1), 100: (0, 1)}
-DIRS_VI = {107: (-1, 0), 106: (1, 0), 104: (0, -1), 108: (0, 1)}
+
+DIRS_WASD = {
+    119: (-1, 0),  # w
+    115: (1, 0),   # s
+    97: (0, -1),   # a
+    100: (0, 1),   # d
+}
+
+DIRS_VI = {
+    107: (-1, 0),  # k
+    106: (1, 0),   # j
+    104: (0, -1),  # h
+    108: (0, 1),   # l
+}
+
+
+def get_field_size(stdscr) -> tuple[int, int]:
+    h, w = stdscr.getmaxyx()
+
+    available_h = h - 3
+    available_w = (w - 2) // 2
+
+    size = min(available_h, available_w)
+    size = max(size, 10)
+
+    return size, size
+
+
+def draw_cell(stdscr, y, x, char, color_pair):
+    """Рисует одну игровую клетку шириной 2 символа,
+    но сам объект занимает только левый символ."""
+    screen_x = x * 2
+
+    try:
+        stdscr.addch(y, screen_x, char, curses.color_pair(color_pair))
+    except curses.error:
+        pass
 
 
 def main(stdscr):
@@ -19,8 +54,7 @@ def main(stdscr):
         curses.init_pair(4, curses.COLOR_CYAN, -1)
 
     while True:
-        h, w = stdscr.getmaxyx()
-        play_h, play_w = h - 2, w - 2
+        play_h, play_w = get_field_size(stdscr)
 
         snake = [(play_h // 2, play_w // 2)]
         dx, dy = 0, 1
@@ -32,37 +66,78 @@ def main(stdscr):
         paused = False
 
         while not game_over:
+            play_h, play_w = get_field_size(stdscr)
             h, w = stdscr.getmaxyx()
-            play_h, play_w = h - 2, w - 2
+
             stdscr.erase()
 
+            # Создание еды
             if food is None:
                 for _ in range(100):
                     fx = random.randint(1, play_w - 2)
                     fy = random.randint(1, play_h - 2)
+
                     if (fy, fx) not in snake:
                         food = (fy, fx)
                         break
 
+            # Рамка: экранная ширина поля — play_w * 2 символов
             for y in range(play_h):
-                for x in range(play_w):
-                    if y == 0 or y == play_h - 1 or x == 0 or x == play_w - 1:
-                        stdscr.addch(y, x, '#', curses.color_pair(4))
+                for x in range(play_w * 2):
+                    if (
+                        y == 0
+                        or y == play_h - 1
+                        or x == 0
+                        or x == play_w * 2 - 1
+                    ):
+                        try:
+                            stdscr.addch(
+                                y,
+                                x,
+                                '#',
+                                curses.color_pair(4),
+                            )
+                        except curses.error:
+                            pass
 
+            # Змейка: одна клетка = один символ
             for i, (sy, sx) in enumerate(snake):
-                if i == 0:
-                    stdscr.addch(sy, sx, '@', curses.color_pair(1))
-                else:
-                    stdscr.addch(sy, sx, 'o', curses.color_pair(1))
+                char = '@' if i == 0 else 'o'
+                draw_cell(stdscr, sy, sx, char, 1)
 
+            # Еда: одна клетка = один символ
             if food:
-                stdscr.addch(food[0], food[1], '*', curses.color_pair(2))
+                fy, fx = food
+                draw_cell(stdscr, fy, fx, '*', 2)
 
-            stdscr.addstr(h - 1, 0, f" Score: {score}  |  WASD/arrows  |  p pause  |  q quit")
+            # Строка статуса
+            status = (
+                f" Score: {score}  |  "
+                f"WASD/arrows  |  p pause  |  q quit"
+            )
 
+            try:
+                stdscr.addstr(play_h + 1, 0, status[:w - 1])
+            except curses.error:
+                pass
+
+            # Надпись паузы
             if paused:
-                stdscr.addstr(play_h // 2, play_w // 2 - 4, "PAUSED", curses.color_pair(3))
+                text = "PAUSED"
+                cell_x = play_w // 2 - len(text) // 2
+                screen_x = cell_x * 2
 
+                try:
+                    stdscr.addstr(
+                        play_h // 2,
+                        screen_x,
+                        text,
+                        curses.color_pair(3),
+                    )
+                except curses.error:
+                    pass
+
+            # Ввод
             try:
                 key = stdscr.getch()
             except KeyboardInterrupt:
@@ -70,13 +145,16 @@ def main(stdscr):
 
             if key == ord('q'):
                 return
+
             if key == ord('p'):
                 paused = not paused
                 continue
+
             if paused:
                 continue
 
-            ody, odx = dy, dx
+            # Направление
+            old_dy, old_dx = dy, dx
 
             if key == curses.KEY_UP:
                 dy, dx = -1, 0
@@ -86,24 +164,35 @@ def main(stdscr):
                 dy, dx = 0, -1
             elif key == curses.KEY_RIGHT:
                 dy, dx = 0, 1
-            elif key in DIRS:
-                dy, dx = DIRS[key]
+            elif key in DIRS_WASD:
+                dy, dx = DIRS_WASD[key]
             elif key in DIRS_VI:
                 dy, dx = DIRS_VI[key]
 
-            if len(snake) > 1 and (dy, dx) == (-ody, -odx):
-                dy, dx = ody, odx
+            # Запрет разворота на 180 градусов
+            if len(snake) > 1 and (dy, dx) == (-old_dy, -old_dx):
+                dy, dx = old_dy, old_dx
 
-            head = snake[0]
-            ny, nx = head[0] + dy, head[1] + dx
+            # Новый шаг
+            head_y, head_x = snake[0]
+            new_y = head_y + dy
+            new_x = head_x + dx
 
-            if ny == 0 or ny >= play_h - 1 or nx == 0 or nx >= play_w - 1 or (ny, nx) in snake:
+            # Столкновение со стеной или собой
+            if (
+                new_y == 0
+                or new_y >= play_h - 1
+                or new_x == 0
+                or new_x >= play_w - 1
+                or (new_y, new_x) in snake
+            ):
                 game_over = True
                 break
 
-            snake.insert(0, (ny, nx))
+            snake.insert(0, (new_y, new_x))
 
-            if food and (ny, nx) == food:
+            # Поедание еды
+            if food and (new_y, new_x) == food:
                 score += 1
                 food = None
                 speed = max(40, speed - 3)
@@ -111,16 +200,30 @@ def main(stdscr):
             else:
                 snake.pop()
 
+        # Экран Game Over
         stdscr.erase()
+        h, w = stdscr.getmaxyx()
+
         msg = f"  GAME OVER  |  Score: {score}  |  r restart  |  q quit  "
-        stdscr.addstr(h // 2, (w - len(msg)) // 2, msg, curses.color_pair(2))
+        msg = msg[:w - 1]
+
+        y = max(0, h // 2)
+        x = max(0, (w - len(msg)) // 2)
+
+        try:
+            stdscr.addstr(y, x, msg, curses.color_pair(2))
+        except curses.error:
+            pass
+
         stdscr.refresh()
 
         while True:
-            k = stdscr.getch()
-            if k == ord('r'):
+            key = stdscr.getch()
+
+            if key == ord('r'):
                 break
-            if k == ord('q'):
+
+            if key == ord('q'):
                 return
 
 

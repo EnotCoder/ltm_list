@@ -6,6 +6,7 @@
     <img src="img/vfx.png" alt="logo" width="400">
     <img src="img/snk.png" alt="snk" width="265">
     <img src="img/dvi.png" alt="dvi" width="190">
+    <img src="img/vfx.png" alt="logo" width="400">
 </p>
 
 

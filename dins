@@ -1,32 +1,31 @@
 #!/usr/bin/env python3
 import os
+import shlex
 import sys
 
-version = "1.2.1"
+
+version = "1.3.1"
 logo = "DINS <--"
+editors = ("nano", "nvim", "code", "subl", " vim")
+
 
 def print_welcome_page():
     print(logo)
-    print("Version: ", version)
+    print("Version:", version)
 
-def print_code_start(code: str, path: str, line: str):
-    code_line = f"|{code} {path}"
-    num_space = (len(line) - len(code_line)) - 3
-    print(code_line, " " * num_space, "|")
+
+def make_commands(path: str) -> list[str]:
+    # Кавычки для путей с пробелами и специальными символами.
+    safe_path = shlex.quote(os.path.abspath(path))
+    return [f"{editor} {safe_path}" for editor in editors]
+
 
 def print_file_found(path: str):
-    line = f"| file is - {path} |"
+    print(f"File is: {path}")
+    print()
 
-    print("-" * len(line))
-    print(line)
-    print("-" * len(line))
-
-    print_code_start("nano", path, line)
-    print_code_start("nvim", path, line)
-    print_code_start("code", path, line)
-    print_code_start("subl", path, line)
-
-    print("-" * len(line))
+    for command in make_commands(path):
+        print(command)
 
 
 def print_file_not_found():
@@ -37,8 +36,6 @@ def print_file_not_found():
 def search(filename: str, start_path: str = ".") -> str | None:
     try:
         entries = os.listdir(start_path)
-    except PermissionError:
-        return None
     except OSError:
         return None
 
@@ -47,31 +44,152 @@ def search(filename: str, start_path: str = ".") -> str | None:
 
         if os.path.isfile(fullpath):
             if entry == filename:
-                return fullpath
-        elif os.path.isdir(fullpath):
+                return os.path.abspath(fullpath)
+
+        elif os.path.isdir(fullpath) and not os.path.islink(fullpath):
             result = search(filename, fullpath)
             if result:
                 return result
 
     return None
 
+# Tkinter GUI
+def show_interface(path: str | None, filename: str):
+    import tkinter as tk
+
+    root = tk.Tk()
+    root.title("Dins")
+    root.geometry("700x900")
+    root.configure(bg="white")
+    root.resizable(False, False)
+
+    def close_window(event=None):
+        root.destroy()
+        return "break"
+
+    root.bind("<Escape>", close_window)
+    root.bind("<Tab>", close_window)
+
+    tk.Label(
+        root,
+        text="Dins",
+        bg="white",
+        fg="black",
+        font=("Arial", 54, "bold")
+    ).pack(pady=(30, 5))
+
+    tk.Label(
+        root,
+        text=f"Version: {version}",
+        bg="white",
+        fg="gray",
+        font=("Arial", 12)
+    ).pack(pady=(0, 25))
+
+    if path is None:
+        tk.Label(
+            root,
+            text=f"File not found:\n{filename}",
+            bg="white",
+            fg="black",
+            font=("Arial", 18),
+            wraplength=620
+        ).pack(expand=True)
+
+        root.mainloop()
+        return
+
+    status = tk.StringVar(value="")
+
+    def copy_text(text: str):
+        root.clipboard_clear()
+        root.clipboard_append(text)
+        status.set("Copied!")
+
+    def add_copy_row(parent, text: str):
+        row = tk.Frame(parent, bg="white")
+        row.pack(fill="x", pady=7)
+
+        field = tk.Entry(
+            row,
+            font=("Arial", 12),
+            readonlybackground="white",
+            fg="black"
+        )
+        field.insert(0, text)
+        field.configure(state="readonly")
+        field.pack(side="left", fill="x", expand=True, ipady=6)
+
+        tk.Button(
+            row,
+            text="Copy",
+            command=lambda: copy_text(text),
+            font=("Arial", 11)
+        ).pack(side="right", padx=(10, 0))
+
+    content = tk.Frame(root, bg="white")
+    content.pack(fill="x", padx=30)
+
+    tk.Label(
+        content,
+        text="File found:",
+        bg="white",
+        fg="black",
+        font=("Arial", 14)
+    ).pack(anchor="w")
+
+    add_copy_row(content, path)
+
+    tk.Label(
+        content,
+        text="Command to open:",
+        bg="white",
+        fg="black",
+        font=("Arial", 14)
+    ).pack(anchor="w", pady=(20, 0))
+
+    for command in make_commands(path):
+        add_copy_row(content, command)
+
+    tk.Label(
+        root,
+        textvariable=status,
+        bg="white",
+        fg="green",
+        font=("Arial", 12)
+    ).pack(pady=15)
+
+    root.mainloop()
+
 
 def main():
-    if len(sys.argv) > 2:
-        print("Sorry, You have too many arguments\n:(")
-        sys.exit(1)
-    elif len(sys.argv) < 2:
-        print_welcome_page()
-        sys.exit()
+    args = sys.argv[1:]
 
-    filename = sys.argv[1]
+    if not args:
+        print_welcome_page()
+        return
+
+    if (
+        len(args) > 2
+        or (len(args) == 2 and args[1] != "-i")
+        or args[0] == "-i"
+    ):
+        sys.exit(1)
+
+    filename = args[0]
+    interface_mode = len(args) == 2 and args[1] == "-i"
 
     found = search(filename)
-    if found is None:
+
+    if interface_mode:
+        show_interface(found, filename)
+        if found is None:
+            sys.exit(1)
+    elif found is None:
         print_file_not_found()
         sys.exit(1)
-
-    print_file_found(found)
+    else:
+        print_file_found(found)
 
 
 if __name__ == "__main__":

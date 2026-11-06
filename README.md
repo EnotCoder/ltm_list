@@ -1,6 +1,13 @@
 # ltm_list
 
-![vfx preview](img/vfx.png)
+![logo](logo.svg)
+
+<p>
+    <img src="img/vfx.png" alt="logo" width="400">
+    <img src="img/snk.png" alt="snk" width="265">
+    <img src="img/dvi.png" alt="dvi" width="190">
+</p>
+
 
 A collection of useful CLI utilities for everyday tasks.
 
@@ -17,6 +24,7 @@ After installation, all programs will be available from any directory.
 ### `dvi` — download video and images
 
 Downloads video from YouTube, VK, Pinterest, TikTok, Instagram, and 1800+ other platforms. If no video is found on the page, it automatically downloads the image.
+
 
 ```bash
 dvi <link>                          # best quality
@@ -110,8 +118,8 @@ Calculator with a pseudo-graphic interface and keyboard support.
 ```
 
 **Controls:**
-- Arrows — button navigation
-- Enter — click button
+- `Arrows` — button navigation
+- `Enter` — click button
 - `Ctrl+C` — exit menu
 - `q` — exit
 

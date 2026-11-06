@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="850"
+     height="300"
+     viewBox="0 0 850 300"
+     role="img"
+     aria-labelledby="title desc">
+
+  <title id="title">ltm list — Python toolkit</title>
+  <desc id="desc">
+    Сине-жёлтый значок Python рядом с названием ltm list.
+  </desc>
+
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#192638"/>
+      <stop offset="1" stop-color="#0E1520"/>
+    </linearGradient>
+
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#65B8F0"/>
+      <stop offset="1" stop-color="#3474AB"/>
+    </linearGradient>
+
+    <linearGradient id="yellow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE783"/>
+      <stop offset="1" stop-color="#FFC43D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Фон -->
+  <rect width="850" height="300"
+        rx="36"
+        fill="url(#background)"/>
+
+  <!-- Подложка значка -->
+  <rect x="36" y="36"
+        width="228" height="228"
+        rx="54"
+        fill="#202E40"
+        stroke="#35485E"
+        stroke-width="2"/>
+
+  <!-- Значок Python -->
+  <g transform="translate(57 57) scale(1.68)">
+
+    <!-- Верхняя синяя змейка -->
+    <path fill="url(#blue)"
+          d="
+          M 54.919 0
+          C 50.335 0.021 45.957 0.412 42.106 1.094
+          C 30.759 3.099 28.7 7.297 28.7 15.039
+          V 25.264
+          H 55.512
+          V 28.672
+          H 18.637
+          C 10.844 28.672 4.02 33.356 1.887 42.266
+          C -0.573 52.479 -0.682 58.852 1.887 69.516
+          C 3.792 77.453 8.342 83.109 16.137 83.109
+          H 25.356
+          V 70.859
+          C 25.356 62.009 33.013 54.203 42.106 54.203
+          H 68.887
+          C 76.342 54.203 82.294 48.065 82.294 40.578
+          V 15.039
+          C 82.294 7.77 76.162 2.31 68.887 1.094
+          C 64.282 0.327 59.502 -0.021 54.919 0
+          Z
+
+          M 40.419 8.219
+          C 43.188 8.219 45.45 10.519 45.45 13.344
+          C 45.45 16.159 43.188 18.438 40.419 18.438
+          C 37.64 18.438 35.387 16.159 35.387 13.344
+          C 35.387 10.519 37.64 8.219 40.419 8.219
+          Z"/>
+
+    <!-- Нижняя жёлтая змейка -->
+    <path fill="url(#yellow)"
+          d="
+          M 85.637 28.672
+          V 40.578
+          C 85.637 49.809 77.812 57.578 68.887 57.578
+          H 42.106
+          C 34.77 57.578 28.7 63.857 28.7 71.203
+          V 96.742
+          C 28.7 104.011 35.021 108.286 42.106 110.367
+          C 50.59 112.862 58.725 113.312 68.887 110.367
+          C 75.637 108.413 82.294 104.48 82.294 96.742
+          V 86.516
+          H 55.512
+          V 83.109
+          H 95.7
+          C 103.493 83.109 106.397 77.673 109.106 69.516
+          C 111.904 61.118 111.785 53.041 109.106 42.266
+          C 107.181 34.508 103.503 28.672 95.7 28.672
+          Z
+
+          M 70.575 93.336
+          C 73.354 93.336 75.606 95.615 75.606 98.43
+          C 75.606 101.255 73.354 103.555 70.575 103.555
+          C 67.806 103.555 65.544 101.255 65.544 98.43
+          C 65.544 95.615 67.806 93.336 70.575 93.336
+          Z"/>
+  </g>
+
+  <!-- Название -->
+  <text x="306" y="159"
+        font-family="DejaVu Sans Mono, Consolas, monospace"
+        font-size="86"
+        font-weight="700"
+        letter-spacing="-5"
+        fill="#F2F6FC">ltm <tspan fill="#FFD45C">list</tspan></text>
+
+  <!-- Подпись -->
+  <g transform="translate(311 193)">
+    <rect width="7" height="7"
+          rx="2"
+          fill="#65B8F0"/>
+
+    <rect y="12"
+          width="7" height="7"
+          rx="2"
+          fill="#FFD45C"/>
+
+    <text x="22" y="17"
+          font-family="DejaVu Sans Mono, Consolas, monospace"
+          font-size="21"
+          font-weight="500"
+          letter-spacing="3"
+          fill="#A8B9CE">PYTHON TOOLKIT</text>
+  </g>
+</svg>

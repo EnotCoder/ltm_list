@@ -153,6 +153,15 @@ cld --purge-dirs           # delete empty subdirectories as well
 
 Deletion is permanent, bypassing the trash. Directories are determined via `~/.config/user-dirs.dirs`, so it works with localized names.
 
+### `keyfix` — Fix text typed in the wrong keyboard layout
+A command-line tool that converts text between English and Russian keyboard layouts.
+
+```bash
+keyfix                 # Welcome page
+keyfix "Ghbdtn vbh"    # Привет мир
+keyfix A сщщд зкщпкфь  # A cool program
+```
+
 ## Uninstallation
 
 ```bash

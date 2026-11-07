@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import sys
+
+version = "1.0.0"
+logo = "KeY-FiX | RU/EN"
+
+def print_welcome_page():
+    print(logo)
+    print("Version:", version)
+
+def main():
+    if len(sys.argv) < 2:
+        print_welcome_page()
+        return
+
+    text = " ".join(sys.argv[1:])
+
+    en_low = "qwertyuiop[]asdfghjkl;'zxcvbnm,./"
+    ru_low = "йцукенгшщзхъфывапролджэячсмитьбю."
+
+    en_up = 'QWERTYUIOP{}ASDFGHJKL:"ZXCVBNM<>?'
+    ru_up = "ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ,"
+
+    is_russian = any(
+        "а" <= c <= "я" or c == "ё"
+        or "А" <= c <= "Я" or c == "Ё"
+        for c in text
+    )
+
+    if is_russian:
+        table = str.maketrans(ru_low + ru_up, en_low + en_up)
+    else:
+        table = str.maketrans(en_low + en_up, ru_low + ru_up)
+
+    print(text.translate(table))
+
+
+if __name__ == "__main__":
+    main()

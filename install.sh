@@ -5,7 +5,7 @@ SCRIPTS=("dvi" "dins" "calc" "imgsh" "gh" "vfx" "vol" "snk" "tls" "cld" "keyfix"
 DIR="$(dirname "$(readlink -f "$0")")"
 
 for name in "${SCRIPTS[@]}"; do
-    src="$DIR/$name"
+    src="$DIR/python_code/$name"
     dest="/usr/local/bin/$name"
 
     if [ ! -f "$src" ]; then

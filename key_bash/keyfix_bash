@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]; then
+    echo "This script is intended for X11, not Wayland." >&2
+    exit 1
+fi
+
+# Prevent multiple replacements from running simultaneously.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/keyfix-selection-${UID}.lock"
+flock -n 9 || exit 0
+
+# Allow time to release the shortcut keys.
+sleep 0.3
+
+window="$(xdotool getactivewindow)"
+
+# Clear the clipboard to avoid processing stale text if copying fails.
+printf '' | xclip -selection clipboard
+
+# Copy the selected text.
+xdotool key --clearmodifiers ctrl+c
+sleep 0.2
+
+text="$(timeout 2s xclip -selection clipboard -o)" || exit 1
+[[ -n "$text" ]] || exit 0
+
+# Pass the text as a single argument to keyfix.
+fixed="$(keyfix "$text")"
+[[ -n "$fixed" ]] || exit 0
+
+# Write the output from keyfix to the clipboard.
+printf '%s' "$fixed" | xclip -selection clipboard
+sleep 0.1
+
+# Do not paste if the user has switched to another window.
+[[ "$(xdotool getactivewindow)" == "$window" ]] || exit 0
+
+# Replace the selected text by pasting the corrected text.
+xdotool key --clearmodifiers ctrl+v

@@ -3,6 +3,9 @@ import sys
 import os
 from PIL import Image
 
+version = "1.3.1"
+logo = "## IMGsh ##"
+
 FORMATS = {
     ".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG",
     ".webp": "WEBP", ".bmp": "BMP", ".gif": "GIF",
@@ -22,17 +25,12 @@ def resize(img: Image.Image, width: int, height: int) -> Image.Image:
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage:")
-        print("  imgsh <input_file> <output_file>              # format conversion")
-        print("  imgsh <input_file> <output_file> --bw          # black and white")
-        print("  imgsh <input_file> <output_file> --resize WxH  # resize")
-        print("  imgsh <input_file> <output_file> --bw --resize WxH")
-        print()
-        print("Examples:")
-        print("  imgsh photo.png photo.jpg")
-        print("  imgsh photo.jpg photo.png --bw")
-        print("  imgsh photo.png photo.jpg --resize 512x512")
+    if len(sys.argv) == 1:
+        print(logo)
+        print("Version:", version)
+        return
+    elif len(sys.argv) == 2:
+        print("Usage -> imgsh <source_file> <output_file> --bw/ --r")
         sys.exit(1)
 
     src = sys.argv[1]
@@ -55,9 +53,9 @@ def main():
     do_bw = "--bw" in flags
     do_resize = None
     for f in flags:
-        if f.startswith("--resize="):
+        if f.startswith("--r="):
             do_resize = f.split("=", 1)[1]
-        elif f == "--resize":
+        elif f == "--r":
             idx = flags.index(f)
             if idx + 1 < len(flags):
                 do_resize = flags[idx + 1]

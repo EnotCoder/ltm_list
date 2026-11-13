@@ -8,6 +8,12 @@ SCRIPTS=(
     "vol" "snk" "tls" "cld" "keyfix"
 )
 
+# Lua programs. They are installed only if a Lua interpreter is available
+# or the user agrees to install one.
+LUA_SCRIPTS=(
+    "ltm_welc"
+)
+
 DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 REQUIREMENTS="$DIR/requirements.txt"
 
@@ -22,6 +28,42 @@ PYTHON="${PYTHON:-python3}"
 fail() {
     echo "Error: $*" >&2
     exit 1
+}
+
+# Print the name of an available Lua interpreter, or fail if none is found.
+find_lua() {
+    local candidate
+
+    for candidate in lua luajit lua5.4 lua5.3 lua5.2 lua5.1; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Try to install a Lua interpreter with the system package manager.
+install_lua() {
+    echo "Trying to install Lua with the system package manager..."
+
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y lua5.4
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y lua
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y lua
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm lua
+    elif command -v zypper >/dev/null 2>&1; then
+        sudo zypper --non-interactive install lua
+    elif command -v apk >/dev/null 2>&1; then
+        sudo apk add lua5.4
+    else
+        echo "No supported package manager found." >&2
+        return 1
+    fi
 }
 
 if [ "$EUID" -eq 0 ]; then
@@ -106,6 +148,37 @@ if ! "$VENV/bin/python" -c 'import PIL; import requests'; then
 Check the error output above."
 fi
 
+# --- Lua programs (optional) ---
+# Lua is not part of a standard system install, so ask the user before adding
+# a new dependency. Declining simply skips the Lua programs.
+LUA_BIN=""
+
+if LUA_BIN="$(find_lua)"; then
+    echo "Found Lua interpreter: $LUA_BIN"
+else
+    echo
+    echo "Lua is not installed. It is required for the Lua programs:"
+    printf '  %s\n' "${LUA_SCRIPTS[@]}"
+
+    answer=""
+    read -r -p "Install Lua now? [y/N] " answer || true
+
+    case "$answer" in
+        y|Y|yes|YES)
+            if install_lua && LUA_BIN="$(find_lua)"; then
+                echo "Lua installed: $LUA_BIN"
+            else
+                echo "Could not install Lua. Lua programs will be skipped." >&2
+                LUA_BIN=""
+            fi
+            ;;
+        *)
+            echo "Skipping Lua programs."
+            LUA_BIN=""
+            ;;
+    esac
+fi
+
 # Prepare scripts before modifying the installation directory.
 STAGING="$(mktemp -d)"
 trap 'rm -rf -- "$STAGING"' EXIT
@@ -148,6 +221,43 @@ PY
 
     INSTALLED+=("$name")
 done
+
+if [ -n "$LUA_BIN" ]; then
+    LUA_PATH="$(command -v "$LUA_BIN")"
+
+    for name in "${LUA_SCRIPTS[@]}"; do
+        src="$DIR/lua_code/$name.lua"
+
+        if [ ! -f "$src" ]; then
+            echo "Skipping $name: source file not found." >&2
+            continue
+        fi
+
+        echo "Checking $name..."
+
+        # Validate Lua syntax without running the script.
+        if ! LUA_SRC="$src" "$LUA_BIN" -e \
+            'local chunk, err = loadfile(os.getenv("LUA_SRC"))
+             if not chunk then io.stderr:write(err, "\n"); os.exit(1) end'; then
+            fail "Syntax check failed for $name."
+        fi
+
+        # Replace the shebang with the detected Lua interpreter.
+        {
+            printf '#!%s\n' "$LUA_PATH"
+
+            first_line="$(head -n 1 "$src")"
+
+            if [[ "$first_line" == '#!'* ]]; then
+                tail -n +2 "$src"
+            else
+                cat "$src"
+            fi
+        } > "$STAGING/$name"
+
+        INSTALLED+=("$name")
+    done
+fi
 
 if [ "${#INSTALLED[@]}" -eq 0 ]; then
     fail "No scripts were found to install."

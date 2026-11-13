@@ -8,10 +8,24 @@ SCRIPTS=(
     "vol" "snk" "tls" "cld" "keyfix"
 )
 
+LUA_SCRIPTS=(
+    "ltm_welc"
+)
+
 APP_DIR="$HOME/.local/share/my-python-tools"
 VENV="$APP_DIR/venv"
 BIN_DIR="/usr/local/bin"
 EXPECTED_SHEBANG="#!$VENV/bin/python"
+
+# A file is managed by this installation when its shebang is either the
+# virtual environment interpreter (Python) or any Lua interpreter. Lua may be
+# installed at different paths, so its shebang is matched with a pattern.
+is_managed() {
+    case "$1" in
+        "$EXPECTED_SHEBANG"|'#!'*lua*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 fail() {
     echo "Error: $*" >&2
@@ -28,7 +42,7 @@ fi
 TO_REMOVE=()
 
 # Only select scripts installed with this environment's interpreter.
-for name in "${SCRIPTS[@]}"; do
+for name in "${SCRIPTS[@]}" "${LUA_SCRIPTS[@]}"; do
     dest="$BIN_DIR/$name"
 
     if [ -L "$dest" ]; then
@@ -48,7 +62,7 @@ for name in "${SCRIPTS[@]}"; do
 
     first_line="$(head -n 1 "$dest")"
 
-    if [ "$first_line" != "$EXPECTED_SHEBANG" ]; then
+    if ! is_managed "$first_line"; then
         echo "Skipping $name: not managed by this installation."
         continue
     fi
@@ -127,7 +141,7 @@ if [ "${#TO_REMOVE[@]}" -gt 0 ]; then
 
         first_line="$(head -n 1 "$dest")"
 
-        if [ "$first_line" != "$EXPECTED_SHEBANG" ]; then
+        if ! is_managed "$first_line"; then
             echo "Skipping $name: interpreter changed."
             continue
         fi

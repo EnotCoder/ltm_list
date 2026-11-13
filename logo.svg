@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg"
-     width="850"
+     width="1100"
      height="300"
-     viewBox="0 0 850 300"
+     viewBox="0 0 1100 300"
      role="img"
      aria-labelledby="title desc">
 
-  <title id="title">ltm list — Python toolkit</title>
+  <title id="title">ltm list — Python and Lua toolkit</title>
   <desc id="desc">
-    Сине-жёлтый значок Python рядом с названием ltm list.
+    Карточки Python и Lua рядом с названием ltm list.
   </desc>
 
   <defs>
@@ -28,11 +28,11 @@
   </defs>
 
   <!-- Фон -->
-  <rect width="850" height="300"
+  <rect width="1100" height="300"
         rx="36"
         fill="url(#background)"/>
 
-  <!-- Подложка значка -->
+  <!-- Карточка Python -->
   <rect x="36" y="36"
         width="228" height="228"
         rx="54"
@@ -102,8 +102,48 @@
           Z"/>
   </g>
 
+  <!-- Карточка Lua рядом с Python -->
+  <rect x="284" y="36"
+        width="228" height="228"
+        rx="54"
+        fill="#202E40"
+        stroke="#35485E"
+        stroke-width="2"/>
+
+  <!-- Значок Lua -->
+  <g transform="translate(284 36)">
+
+    <!-- Пунктирная орбита -->
+    <circle cx="114" cy="114" r="88"
+            fill="none"
+            stroke="#A8B9CE"
+            stroke-width="2"
+            stroke-dasharray="5 7"/>
+
+    <!-- Основной круг -->
+    <circle cx="106" cy="122" r="68"
+            fill="#000080"/>
+
+    <!-- Светлое пятно -->
+    <circle cx="132" cy="92" r="19"
+            fill="#FFFFFF"/>
+
+    <!-- Спутник -->
+    <circle cx="178" cy="48" r="19"
+            fill="#000080"
+            stroke="#A8B9CE"
+            stroke-width="1.5"/>
+
+    <!-- Название языка -->
+    <text x="106" y="155"
+          text-anchor="middle"
+          font-family="DejaVu Sans, Arial, sans-serif"
+          font-size="48"
+          fill="#FFFFFF">Lua</text>
+  </g>
+
   <!-- Название -->
-  <text x="306" y="159"
+  <text x="554" y="159"
         font-family="DejaVu Sans Mono, Consolas, monospace"
         font-size="86"
         font-weight="700"
@@ -111,7 +151,7 @@
         fill="#F2F6FC">ltm <tspan fill="#FFD45C">list</tspan></text>
 
   <!-- Подпись -->
-  <g transform="translate(311 193)">
+  <g transform="translate(559 193)">
     <rect width="7" height="7"
           rx="2"
           fill="#65B8F0"/>
@@ -125,7 +165,7 @@
           font-family="DejaVu Sans Mono, Consolas, monospace"
           font-size="21"
           font-weight="500"
-          letter-spacing="3"
-          fill="#A8B9CE">PYTHON TOOLKIT</text>
+          letter-spacing="1.5"
+          fill="#A8B9CE">PYTHON + LUA TOOLKIT</text>
   </g>
 </svg>

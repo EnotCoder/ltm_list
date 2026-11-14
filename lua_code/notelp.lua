@@ -122,8 +122,6 @@ local function save_notes(notes)
 end
 
 local function print_help()
-    print("notelp — a tiny CLI notebook")
-    print("")
     print("Usage:")
     print('  notelp add "Note text"')
     print("  notelp list")
@@ -131,8 +129,6 @@ local function print_help()
     print("  notelp delete 1")
     print("  notelp help")
     print("")
-    print("Notes file: " .. (notes_file or tostring(notes_path_error)))
-    print("Override it with the NOTELP_FILE environment variable.")
 end
 
 local function valid_index(value, notes)
@@ -153,6 +149,7 @@ local function main()
     local command = arg[1] or "help"
 
     if command == "help" then
+        print("\27[96mNotelp\27[0m — a tiny CLI notebook\n")
         print_help()
         return
     end
@@ -162,7 +159,7 @@ local function main()
         and command ~= "show"
         and command ~= "delete"
     then
-        print("Unknown command: " .. command)
+        print("\27[31mUnknown command:\27[0m " .. command .. "\n")
         print_help()
         return
     end

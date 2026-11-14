@@ -18,6 +18,7 @@ local python_program = {
 
 local lua_program = {
     "ltm_welc",
+    "notelp",
 }
 
 local logo = [[

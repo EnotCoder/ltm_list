@@ -12,6 +12,7 @@ SCRIPTS=(
 # or the user agrees to install one.
 LUA_SCRIPTS=(
     "ltm_welc"
+    "notelp"
 )
 
 DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"

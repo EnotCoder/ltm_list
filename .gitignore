@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# Local notebook created when running notelp from this directory.
+/notelp.txt

@@ -10,6 +10,7 @@ SCRIPTS=(
 
 LUA_SCRIPTS=(
     "ltm_welc"
+    "notelp"
 )
 
 APP_DIR="$HOME/.local/share/my-python-tools"

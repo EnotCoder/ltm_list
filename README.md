@@ -162,6 +162,19 @@ keyfix "Ghbdtn vbh"    # Привет мир
 keyfix A сщщд зкщпкфь  # A cool program
 ```
 
+### `notelp` — notes
+
+A tiny notebook for the command line. Notes are saved in a single file, so they are available from any directory.
+
+```bash
+notelp add "Buy milk"     # add a note
+notelp list               # show all notes
+notelp show 1             # show note #1
+notelp delete 1           # delete note #1
+```
+
+Notes are stored in `~/.local/share/notelp/notelp.txt` (or `$XDG_DATA_HOME/notelp/notelp.txt`). Set the `NOTELP_FILE` environment variable to use a different file.
+
 ## Uninstallation
 
 ```bash

@@ -18,7 +18,18 @@ A collection of useful CLI utilities for everyday tasks.
 
 After installation, all programs will be available from any directory.
 
+The Lua programs (`ltm_welc`, `notelp`) are installed only if a Lua interpreter is available. If Lua is missing, the installer offers to install it.
+
 ## Programs
+
+### `ltm_welc` — welcome page
+
+Shows a short welcome page with the list of available programs, or full documentation with descriptions.
+
+```bash
+ltm_welc                # welcome page
+ltm_welc -h             # documentation
+```
 
 ### `dvi` — download video and images
 

@@ -173,6 +173,16 @@ keyfix "Ghbdtn vbh"    # Привет мир
 keyfix A сщщд зкщпкфь  # A cool program
 ```
 
+### `qrc` — QR code generator
+
+Prints a QR code in the terminal or saves it as an image.
+
+```bash
+qrc https://example.com        # print QR code in terminal
+qrc -i https://example.com     # save 400x400 PNG to ~/Downloads
+qrc --invert https://example.com
+```
+
 ### `notelp` — notes
 
 A tiny notebook for the command line. Notes are saved in a single file, so they are available from any directory.

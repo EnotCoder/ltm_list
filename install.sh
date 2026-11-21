@@ -5,7 +5,7 @@ trap 'echo "Installation failed at line $LINENO." >&2' ERR
 
 SCRIPTS=(
     "dvi" "dins" "calc" "imgsh" "gh" "vfx"
-    "vol" "snk" "tls" "cld" "keyfix"
+    "vol" "snk" "tls" "cld" "keyfix" "qrc"
 )
 
 # Lua programs. They are installed only if a Lua interpreter is available
@@ -144,7 +144,7 @@ Check the pip output above."
 fi
 
 echo "Checking required imports..."
-if ! "$VENV/bin/python" -c 'import PIL; import requests'; then
+if ! "$VENV/bin/python" -c 'import PIL; import qrcode; import requests'; then
     fail "Dependency import check failed.
 Check the error output above."
 fi

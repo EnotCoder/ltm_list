@@ -5,7 +5,7 @@ trap 'echo "Uninstallation failed at line $LINENO." >&2' ERR
 
 SCRIPTS=(
     "dvi" "dins" "calc" "imgsh" "gh" "vfx"
-    "vol" "snk" "tls" "cld" "keyfix"
+    "vol" "snk" "tls" "cld" "keyfix" "qrc"
 )
 
 LUA_SCRIPTS=(

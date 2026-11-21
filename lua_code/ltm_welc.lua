@@ -25,6 +25,7 @@ local python_program = {
     "vol",
     "cld",
     "keyfix",
+    "qrc",
     "notelp", 
 }
 
@@ -73,6 +74,7 @@ local python_program_desc = {
     "vol - terminal audio player",
     "cld - clear screenshots and downloads",
     "keyfix - Fix text typed in the wrong keyboard layout",
+    "qrc - QR code generator",
 }
 
 local lua_program_desc = {
